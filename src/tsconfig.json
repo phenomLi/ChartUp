@@ -1,0 +1,9 @@
+{  
+    "compilerOptions": {  
+        // "module": "commonjs",//可不写  
+        "sourceMap": true  
+    },  
+    "files": [  
+        "./ChartUp.ts"  
+   ]  
+}  
