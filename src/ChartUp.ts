@@ -1,13 +1,78 @@
+
 /*
-* version: 0.0.1
+* - ChartUp -
+* version: 0.0.2
 * A javascript framework for building visual data. From phenom.
-* 11.9.2017
+* start on 11.9.2017
 */
 
 
-interface chartModule {
-	//渲染整体
-	render(itemList: string[], x: number, y: number): void;
+
+// ------------ MAIN ------------ //
+
+
+
+//图表类的统一接口，每当扩展一个新的图表类时，都必须实现这个接口
+export default interface chartModule {
+	
+	//数据分析函数，对用户输入的数据集进行分析运算
+	/*
+	* @parameter:
+	* item: 用户输入的数据集的某一项，应为对象
+	* index: 当前项目在数据集中的索引
+	*/
+	analyseItems(item, index: number);
+
+	//为图表绑定鼠标事件
+	bindMouseEvent();
+
+	//结果渲染，将分析好的数据渲染出来
+	/*
+	* @parameter:
+	* data: 已经经过analyseItems分析的数据，应为数组
+	*/
+	renderResult(data);
+
+
+	//浮动提示框
+	/*
+	* @parameter:
+	* x: 鼠标横坐标
+	* y: 鼠标纵坐标
+	* flag: 当前鼠标指向的项目的信息
+	*/
+	paintTipCase(x: number, y: number, flag);
+
+
+	//鼠标选中项目效果处理
+	/*
+	* @parameter:
+	* x: 鼠标横坐标
+	* y: 鼠标纵坐标
+	* data: 已经经过analyseItems分析的数据，应为数组
+	*/
+	mouseSelect(data, x: number, y: number);
+
+	//显示图表的标题
+	setTitle();
+
+	//显示项目的标签
+	paintLabel();
+
+	//真正的渲染函数，里面包含了图表所有内容的渲染，包括坐标轴，数据结果，交互提示，图表标题，项目标签等等，同时也是图表每次刷新要执行的函数
+	/*
+	* @parameter:
+	* x: 鼠标横坐标
+	* y: 鼠标纵坐标
+	*/
+	reRender(x: number, y: number);
+
+	//主入口，图表渲染的开始，并且决定了图表要显示的项目
+	/*
+	* @parameter:
+	* itemList: 数组，定义了用户想要在图表中显示的项目，若itemList为null或者undefined，则默认被认为显示全部项目
+	*/
+	render(itemList: string[]);
 }
 
 /*
@@ -17,7 +82,11 @@ const ChartUp = (function(window) {
 
 
 interface ChartAPI {
-      //扩展方法
+	  
+	  //工具方法，里面包含了ChartUp里面已经封装好的某些工具函数，用作画图
+	  fn;
+
+	  //扩展方法
       extend(config: object): void;
 }      
 
@@ -142,18 +211,18 @@ class DrawArc {
 	private x: number = 0;
 	private y: number = 0;
 	
-	constructor(g: object, radius: number, startAngle: number, endAngle: number, soild: boolean = true) {
+	constructor(g: object, radius: number, angle: number, soild: boolean = true) {
 		this.g = g;
 		this.radius = radius;
 
-		this.startAngle = _degree2Radian(startAngle);
-		this.endAngle = _degree2Radian(endAngle);
+		this.startAngle = 0;
+		this.endAngle = _degree2Radian(angle);
 		this.isSoild = soild;
 	}
 
-	next(endAngle: number, color?: string) {
+	next(angle: number, color?: string) {
 		this.startAngle = this.endAngle;
-		this.endAngle = _degree2Radian(endAngle);
+		this.endAngle = this.endAngle + _degree2Radian(angle);
 
 		this.render(this.x, this.y, color);
 
@@ -172,7 +241,9 @@ class DrawArc {
 		}
 
 		this.g.beginPath();
-		this.g.arc(x, y, this.radius, this.startAngle, this.endAngle);
+		this.g.moveTo(this.x, this.y);
+		this.g.arc(this.x, this.y, this.radius, this.startAngle, this.endAngle);
+		this.g.closePath();
 
 		this.isSoild? 
 			this.g.fill():
@@ -313,23 +384,25 @@ class DrawCoordinateSystem {
 		this.rxEdge = this.oX + this.lX;
 		this.ryEdge = this.oY - this.lY;
 
-		this.xOrigin = this.config.origin[0],
-		this.yOrigin = this.config.origin[1];
-		
 		const xMax: number = this.getMax(this.config.items, 'x'),
 			  yMax: number = this.getMax(this.config.items, 'y'),
-			  xLength: number = xMax - this.xOrigin,
-			  yLength: number = yMax - this.yOrigin;
+			  xMin: number = this.getMin(this.config.items, 'x'),
+			  yMin: number = this.getMin(this.config.items, 'y');
 
 		this.xInterval = this.config.interval[0],
 		this.yInterval = this.config.interval[1];
+
+		this.xOrigin = xMin - this.xInterval,
+		this.yOrigin = yMin - this.yInterval;	  
+
+		const xLength: number = xMax - this.xOrigin,
+			  yLength: number = yMax - this.yOrigin;
 
 		this.xCount = Math.floor(xLength/this.xInterval) + 1,
 		this.yCount = Math.floor(yLength/this.yInterval) + 1;
 				
 		this.xEdge = this.xInterval*this.xCount + this.xOrigin,
 		this.yEdge = this.yInterval*this.yCount + this.yOrigin;
-
 
 		for(let i = 1; i <= this.xCount; i ++) {
 			//计算每一个断点到原点距离
@@ -346,6 +419,11 @@ class DrawCoordinateSystem {
 			this.ryIntervals.push(this.oY - index);
 			this.yIntervals.push(i*this.yInterval + this.yOrigin);
 		}
+
+	}
+
+	//绘制x=0，y=0的两个轴
+	private baseLine() {
 
 	}
 
@@ -436,21 +514,44 @@ class DrawCoordinateSystem {
 			}));
 		}
 	}
-}
 
+	//获取坐标点的最小值
+	private getMin(items, dir: string) {
+		const flag = dir === 'x'? 0: 1;
+
+		//若是柱状图表，则没有x轴的断点，只需要y轴
+		if(this.config.chartType === 'PillarChart') {
+			let pointsArr = [];
+			
+			items.map(item => {
+				pointsArr.push(item.height);
+			});
+
+			return _MIN(pointsArr);
+		}
+		else {
+			//判断items是否为数组
+			return _MIN(items.map(item => {
+				if(typeof item.points === 'function') {
+					return _Gconfig.edge[flag];
+				}
+				else {
+					return _MIN(item.points.map(p => p[flag]));
+				}			
+			}));
+		}
+	}
+
+}
 
 
 
 /*
 * @Animate: canvas动绘制的一个封装
-* next: 下一个坐标点
-* end: 最后一个坐标点
 */
 
-class Animate {
-    constructor() {
+const _Animate = function() {
 
-    }
 }
 
 
@@ -488,7 +589,7 @@ class LineChart implements chartModule {
 		this.config = config;
 		
 		//默认原点为(0, 0)
-		this.config.origin = this.config.origin? this.config.origin: [0, 0];
+		//this.config.origin = this.config.origin? this.config.origin: [0, 0];
 		//默认开启网格
 		this.config.grid = this.config.grid === undefined? true: this.config.grid;
 
@@ -557,26 +658,33 @@ class LineChart implements chartModule {
 		return this;
 	}
 
-	protected reRender(x: number, y: number) {
+	reRender(x: number, y: number) {
 		this.g.save();
 
 		//绘制坐标轴
-		this.drawCoordinateSystem();
-
-		//若设置网格，则描绘网格
-		this.config.grid && this.drawGridX().drawGridY();
-
-		//绘制图表结果
-		this
+		this.drawCoordinateSystem()
+			.paintGrid()
 			.renderResult(this.data)
 			.paintTargetLineX(x, y)
 			.paintTargetLineY(x, y)
-			.paintTipCase(x, y, this.mouseSelect(this.data, x, y));
-
-		//若设置标题，则描绘标题
-		this.config.title && new DrawTitle(this.g, this.config.title).render(40, 30);
+			.paintTipCase(x, y, this.mouseSelect(this.data, x, y))
+			.setTitle()
+			.paintLabel();
 
 		this.g.restore();
+	}
+
+	//绘制网格
+	protected paintGrid() {
+		this.config.grid && this.drawGridX().drawGridY();
+		return this;
+	}
+
+	//设置图表标题
+	setTitle() {
+		//若设置标题，则描绘标题
+		this.config.title && new DrawTitle(this.g, this.config.title).render(40, 30);
+		return this;
 	}
 
 	//绘制坐标轴
@@ -624,7 +732,7 @@ class LineChart implements chartModule {
 	}
 
 	//为图表绑定鼠标事件
-	protected bindMouseEvent() {
+	bindMouseEvent() {
 		this.config.canvas.addEventListener('mousemove', e => {
 			let x = e.clientX - this.config.canvas.getBoundingClientRect().left,
 				y = e.clientY - this.config.canvas.getBoundingClientRect().top; 
@@ -637,7 +745,7 @@ class LineChart implements chartModule {
 	}
 
 	//鼠标选中元素处理
-	protected mouseSelect(circles, x: number, y: number) {
+	mouseSelect(circles, x: number, y: number) {
 		//标志符：用作判断鼠标是否移到了圆点里面
 		let flag: object = null;
 
@@ -661,11 +769,20 @@ class LineChart implements chartModule {
 
 	//绘制横向测量线
 	protected paintTargetLineY(x: number, y: number) {
-	
+		
+		const vy: number = this.coordinateSystem.yOrigin + Math.abs((y - this.config.canvasHeight + 45))*(this.coordinateSystem.yEdge - this.coordinateSystem.yOrigin)/(this.coordinateSystem.lY);
+
 		if(this.isInChart(x, y)) { 
 			if(this.config.measureLine) {
 				new DrawLine(this.g, this.coordinateSystem.oX, y, 'rgba(0, 0, 0, 0.2)')
 					.end(this.coordinateSystem.rxEdge, y);
+
+				this.g.fillStyle = 'rgba(0, 0, 0, 0.7)';
+				this.g.rect(this.coordinateSystem.oX + 5, y - 21, 70, 18);
+				this.g.fill();
+				this.g.font = '12px serif';
+				this.g.fillStyle = '#fff';
+				this.g.fillText(`y: ${vy.toFixed(3)}`, this.coordinateSystem.oX + 10, y - 9);	
 			}	
 		}
 
@@ -674,49 +791,58 @@ class LineChart implements chartModule {
 
 	//绘制纵向测量线
 	protected paintTargetLineX(x: number, y: number) {
+
+		const vx: number = this.coordinateSystem.xOrigin + (x - 45)*(this.coordinateSystem.xEdge - this.coordinateSystem.xOrigin)/(this.coordinateSystem.lX);
+
 		if(this.isInChart(x, y)) { 
 			if(this.config.measureLine) {
 				new DrawLine(this.g, x, this.coordinateSystem.ryEdge, 'rgba(0, 0, 0, 0.2)')
 					.end(x, this.coordinateSystem.oY);
+
+				this.g.fillStyle = 'rgba(0, 0, 0, 0.7)';
+				this.g.rect(x + 5, this.coordinateSystem.oY - 21, 70, 18);
+				this.g.fill();
+				this.g.font = '12px serif';
+				this.g.fillStyle = '#fff';
+				this.g.fillText(`x: ${vx.toFixed(3)}`, x + 10, this.coordinateSystem.oY - 8);
+	
 			}	
 		}
 		return this;
 	}
 
 	//绘制坐标提升框
-	protected paintTipCase(x: number, y: number, flag) {
+	paintTipCase(x: number, y: number, flag) {
 
 		const vx: number = this.coordinateSystem.xOrigin + (x - 45)*(this.coordinateSystem.xEdge - this.coordinateSystem.xOrigin)/(this.coordinateSystem.lX),
 		      vy: number = this.coordinateSystem.yOrigin + Math.abs((y - this.config.canvasHeight + 45))*(this.coordinateSystem.yEdge - this.coordinateSystem.yOrigin)/(this.coordinateSystem.lY)
 
 		if(this.isInChart(x, y)) {
-			this.g.fillStyle = 'rgba(0, 0, 0, 0.5)';
+			this.g.fillStyle = 'rgba(0, 0, 0, 0.7)';
 
 			if(x + 90 > this.coordinateSystem.rxEdge) {
 				x = this.coordinateSystem.rxEdge - 90;
 			}
 			
-			this.g.fillRect(x + 10, y + 10, 80, 40);
-			this.g.font = '12px serif';
-			this.g.fillStyle = '#fff';
-	
 			if(flag) {
+				this.g.fillRect(x + 10, y + 10, 80, 40);
+				this.g.font = '12px serif';
+				this.g.fillStyle = '#fff';
 				this.g.fillText(`x: ${flag.cx.toFixed(3)}`, x + 15, y + 25);
 				this.g.fillText(`y: ${flag.cy.toFixed(3)}`, x + 15, y + 40);
 			}
-			else {
-				this.g.fillText(`x: ${vx.toFixed(3)}`, x + 15, y + 25);
-				this.g.fillText(`y: ${vy.toFixed(3)}`, x + 15, y + 40);
-			}
 		}
+
+		return this;
+	}
+
+	paintLabel() {
+		return this;
 	}
 
 
-	protected paintLabel() {}
-
-
 	//分析点数据
-	protected analyseItems(item, index: number) {
+	analyseItems(item, index: number) {
 		let circleInfo = [];
 
 		if(typeof item.points === 'function') {
@@ -739,12 +865,10 @@ class LineChart implements chartModule {
 		}
 	}
 
-
-
 	//绘制点函数
 	protected renderPoints(p, color: string) {
 		//绘制第一个点
-		let cyc = new DrawArc(this.g, 3, 0, 360),
+		let cyc = new DrawArc(this.g, 3, 360),
 			line = new DrawLine(this.g, p[0].x, p[0].y, color).paint(cyc);
 
 		//继续绘制接下去的点
@@ -778,7 +902,7 @@ class LineChart implements chartModule {
 		line.end(p.x, p.y);
 	}
 
-    protected renderResult(data) {
+    renderResult(data) {
 		data.map(cir => {
 			if(typeof cir.ele === 'function') {
 				this.renderExpression(cir.ele, cir.color);
@@ -836,7 +960,7 @@ class PointChart extends LineChart {
 	}
 
 	//分析点数据
-	protected analyseItems(item, index: number) {
+	analyseItems(item, index: number) {
 		const radiusList = this.getRadius(item.points.map(i => i[2])),
 			  circleInfo = [];
 		
@@ -858,10 +982,10 @@ class PointChart extends LineChart {
 
 
 	//绘制点函数
-	protected renderResult(data) {
+	renderResult(data) {
 		data.map(cir => {
 			cir.ele.map(c => {
-				new DrawArc(this.g, c.r, 0, 360).render(c.x, c.y, cir.color);
+				new DrawArc(this.g, c.r, 360).render(c.x, c.y, cir.color);
 			});
 		});
 		
@@ -869,12 +993,12 @@ class PointChart extends LineChart {
 	}
 
 	//绘制坐标提升框
-	protected paintTipCase(x: number, y: number, flag) {
+	paintTipCase(x: number, y: number, flag) {
 
 		const vx: number = (x - 45)*(this.coordinateSystem.xEdge - this.coordinateSystem.xOrigin)/(this.coordinateSystem.lX),
 			  vy: number = Math.abs((y - this.config.canvasHeight + 45))*(this.coordinateSystem.yEdge - this.coordinateSystem.yOrigin)/(this.coordinateSystem.lY)
 
-		this.g.fillStyle = 'rgba(0, 0, 0, 0.5)';
+		this.g.fillStyle = 'rgba(0, 0, 0, 0.7)';
 		
 		if(x + 90 > this.coordinateSystem.rxEdge) {
 			x = this.coordinateSystem.rxEdge - 90;
@@ -889,14 +1013,9 @@ class PointChart extends LineChart {
 				this.g.fillText(`y: ${flag.cy.toFixed(3)}`, x + 15, y + 40);
 				this.g.fillText(`weight: ${flag.w?flag.w:'none'}`, x + 15, y + 55);
 			}
-			else {
-				this.g.fillRect(x + 10, y + 10, 80, 40);
-				this.g.font = '12px serif';
-				this.g.fillStyle = '#fff';
-				this.g.fillText(`x: ${vx.toFixed(3)}`, x + 15, y + 25);
-				this.g.fillText(`y: ${vy.toFixed(3)}`, x + 15, y + 40);
-			}
 		}
+
+		return this;
 	}
 }
 
@@ -905,6 +1024,17 @@ class PointChart extends LineChart {
 /*
 * @PillarChart: 柱状图表
 * 继承自LineChart
+*
+* 重写方法：
+* drawCoordinateSystem
+* drawGridY
+* analyseItems
+* paintTargetLineY
+* paintTipCase
+* mouseSelect
+* paintLabel
+* renderResult
+* reRender
 */
 class PillarChart extends LineChart {
 
@@ -943,8 +1073,14 @@ class PillarChart extends LineChart {
 		return this;
 	}
 
+	//绘制网格
+	protected paintGrid() {
+		this.config.grid && this.drawGridY();
+		return this;
+	}
+
 	//分析点数据
-	protected analyseItems(item, index: number) {
+	analyseItems(item, index: number) {
 
 		//经过转换后的高度
 		let height = this.coordinateSystem.oY - this.coordinateSystem.calc(0, item.height).y;
@@ -955,7 +1091,6 @@ class PillarChart extends LineChart {
 			width: this.itemWidth,
 			height: height,
 			cheight: item.height,
-			label: item.label
 		}
 	}
 
@@ -968,10 +1103,19 @@ class PillarChart extends LineChart {
 	//绘制横向测量线
 	protected paintTargetLineY(x: number, y: number) {
 		
+		const vy: number = this.coordinateSystem.yOrigin + Math.abs((y - this.config.canvasHeight + 45))*(this.coordinateSystem.yEdge - this.coordinateSystem.yOrigin)/(this.coordinateSystem.lY);
+
 		if(this.isInChart(x, y)) { 
 			if(this.config.measureLine) {
 				new DrawLine(this.g, this.coordinateSystem.oX, y, 'rgba(0, 0, 0, 0.2)')
-					.end(this.coordinateSystem.rxEdge + 20, y);
+					.end(this.coordinateSystem.rxEdge, y);
+
+				this.g.fillStyle = 'rgba(0, 0, 0, 0.7)';
+				this.g.rect(this.coordinateSystem.oX + 5, y - 21, 70, 18);
+				this.g.fill();
+				this.g.font = '12px serif';
+				this.g.fillStyle = '#fff';
+				this.g.fillText(`y: ${vy.toFixed(3)}`, this.coordinateSystem.oX + 10, y - 9);	
 			}	
 		}
 
@@ -980,7 +1124,7 @@ class PillarChart extends LineChart {
 
 
 	//绘制坐标提升框
-	protected paintTipCase(x: number, y: number, flag) {
+	paintTipCase(x: number, y: number, flag) {
 		
 		const vy: number = Math.abs((y - this.config.canvasHeight + 45))*(this.coordinateSystem.yEdge - this.coordinateSystem.yOrigin)/(this.coordinateSystem.lY)
 
@@ -989,27 +1133,23 @@ class PillarChart extends LineChart {
 		}
 
 		if(this.isInChart(x, y)) {
-			this.g.fillStyle = 'rgba(0, 0, 0, 0.5)';
+			this.g.fillStyle = 'rgba(0, 0, 0, 0.7)';
 	
 			if(flag) {
 				this.g.fillRect(x, y - 40, 110, 35);
 				this.g.font = '12px serif';
 				this.g.fillStyle = '#fff';
 				this.g.fillText(`height: ${flag.ele.cheight.toFixed(3)}`, x + 15, y - 25);
-				this.g.fillText(`lable: ${flag.ele.label}`, x + 15, y - 10);
-			}
-			else {
-				this.g.fillRect(x, y - 25, 80, 20);
-				this.g.font = '12px serif';
-				this.g.fillStyle = '#fff';
-				this.g.fillText(`y: ${vy.toFixed(3)}`, x + 15, y - 10);
+				this.g.fillText(`lable: ${flag.label}`, x + 15, y - 10);
 			}
 		}
+
+		return this;
 	}
 
 
 	//鼠标选中元素处理
-	protected mouseSelect(rects, x: number, y: number) {
+	mouseSelect(rects, x: number, y: number) {
 		//标志符：用作判断鼠标是否移到了圆点里面
 		let flag: object = null;
 
@@ -1033,25 +1173,29 @@ class PillarChart extends LineChart {
 		const halfWidth = this.itemWidth/2;
 
 		let line = null,
-			cir = new DrawArc(this.g, 3, 0, 360, false);
+			cir = new DrawArc(this.g, 3, 360, false);
 
-		this.data.map((rect, index) => {
-			if(index === 0) {
-				line = new DrawLine(this.g, rect.ele.x + halfWidth, rect.ele.y, '#333');
-			}
-			else if(index === this.data.length) {
-				line = line.end(rect.ele.x + halfWidth, rect.ele.y);
-			}
-			else {
-				line = line.next(rect.ele.x + halfWidth, rect.ele.y);
-			}
+		if(this.config.trendLine) {
+			this.data.map((rect, index) => {
+				if(index === 0) {
+					line = new DrawLine(this.g, rect.ele.x + halfWidth, rect.ele.y, '#333');
+				}
+				else if(index === this.data.length) {
+					line = line.end(rect.ele.x + halfWidth, rect.ele.y);
+				}
+				else {
+					line = line.next(rect.ele.x + halfWidth, rect.ele.y);
+				}
+	
+				line.paint(cir);
+			});
+		}
 
-			line.paint(cir);
-		});
+		return this;
 	}
 
 	//为每一个项目标上名字
-	protected paintLabel() {
+	paintLabel() {
 
 		const halfWidth = this.itemWidth/2;
 
@@ -1061,7 +1205,7 @@ class PillarChart extends LineChart {
 		this.g.textAlign = 'center';
 
 		this.data.map(rect => {
-			this.g.fillText(rect.ele.label, rect.ele.x + halfWidth, this.coordinateSystem.oY + 20);
+			this.g.fillText(rect.label, rect.ele.x + halfWidth, this.coordinateSystem.oY + 20);
 		});
 
 		this.g.restore();
@@ -1069,7 +1213,7 @@ class PillarChart extends LineChart {
 		return this;
 	}
 
-	protected renderResult(data) {
+	renderResult(data) {
 		data.map(rect => {
 			new DrawRect(this.g, rect.ele.width, rect.ele.height).render(rect.ele.x, rect.ele.y, rect.color);
 		});	
@@ -1077,32 +1221,340 @@ class PillarChart extends LineChart {
 	}
 
 	//刷新图表，重新渲染
-	protected reRender(x: number, y: number): void {
+	reRender(x: number, y: number): void {
 		this.g.save();
 
 		//绘制坐标轴
-		this.drawCoordinateSystem();
-
-		//若设置网格，则描绘网格
-		this.config.grid && this.drawGridY();
-
-		//绘制图表结果
-		this
+		this.drawCoordinateSystem()
+			.paintGrid()
 			.renderResult(this.data)
 			.paintLabel()
 			.paintTargetLineY(x, y)
-			.paintTipCase(x, y, this.mouseSelect(this.data, x, y));
-
-		//绘制趋势线
-		this.config.trendLine && this.drawTrendLine();	
-
-		//若设置标题，则描绘标题
-		this.config.title && new DrawTitle(this.g, this.config.title).render(40, 30);
+			.paintTipCase(x, y, this.mouseSelect(this.data, x, y))
+			.drawTrendLine()
+			.setTitle();	
 
 		this.g.restore();
 	}
 }
 
+
+
+
+/*
+* @PieChart: 饼状图表
+*/
+class PieChart implements chartModule{
+
+	protected g = null;
+	protected config = null;
+
+	protected itemList = [];
+
+	//存放分析好的数据
+	protected data = [];
+
+	//图形默认半径
+	protected radius: number = 120;
+
+	//画布的中心点，用作圆心
+	protected centerPoint: number[] = [];
+
+	//数据总和
+	protected total: number = 0;
+
+	constructor(Graphics, config) {
+		this.g = Graphics;
+		this.config = config;
+
+		//设置默认半径
+		this.config.radius = this.config.radius === undefined? this.radius: this.config.radius;
+
+		//计算中心点
+		this.centerPoint = [this.config.canvasWidth/2, this.config.canvasHeight/2];
+
+		//计算总和
+		this.total = this.sum(this.config.items);
+
+		this.bindMouseEvent();
+	}
+
+	//计算数据量总和
+	private sum(items) {
+		return items.map(item => item.data).reduce((prev, cur, index, arr) => prev + cur);
+	}
+
+	//数据分析函数，对用户输入的数据集进行分析运算
+	analyseItems(item, index: number) {
+		return {
+			data: item.data,
+			angle: (item.data*360)/this.total,
+			ratio: ((item.data/this.total)*100).toFixed(1) + '%'
+		};
+	};
+	
+	//为图表绑定鼠标事件
+	bindMouseEvent() {
+		this.config.canvas.addEventListener('mousemove', e => {
+			let x = e.clientX - this.config.canvas.getBoundingClientRect().left,
+				y = e.clientY - this.config.canvas.getBoundingClientRect().top; 
+
+			this.g.clearRect(0, 0, this.config.canvasWidth, this.config.canvasHeight);
+			this.reRender(x, y);
+		});
+
+		return this;
+	};
+
+	//结果渲染，将分析好的数据渲染出来
+	renderResult(data) {
+		let cir = null;
+
+		data.map(pie => {
+			if(!cir) {
+				cir = new DrawArc(this.g, this.config.radius, pie.ele.angle)
+					.render(this.centerPoint[0], this.centerPoint[1], pie.color);
+			}
+			else {
+				cir = cir.next(pie.ele.angle, pie.color);
+			}
+		});
+
+		return this;
+	};
+
+	//判断是否在圆内
+	private isInCircle(x: number, y: number) {
+		this.g.beginPath();
+		this.g.arc(this.centerPoint[0], this.centerPoint[1], this.config.radius, 0, 2*Math.PI);
+		return this.g.isPointInPath(x, y);
+	}
+
+	//浮动提示框
+	paintTipCase(x: number, y: number, flag) {
+		if(this.isInCircle(x, y)) {
+			this.g.fillStyle = 'rgba(0, 0, 0, 0.5)';
+
+			if(flag) {
+				this.g.fillRect(x, y - 60, 110, 50);
+				this.g.font = '12px serif';
+				this.g.fillStyle = '#fff';
+				this.g.fillText(`lable: ${flag.label}`, x + 10, y - 45);
+				this.g.fillText(`data: ${flag.ele.data}`, x + 10, y - 30);
+				this.g.fillText(`ratio: ${flag.ele.ratio}`, x + 10, y - 15);
+			}
+		}
+
+		return this;
+	};
+
+
+	//鼠标选中项目效果处理
+	mouseSelect(data, x: number, y: number) {
+		//标志符：用作判断鼠标是否移到了圆点里面
+		let flag: object = null,
+			startAngle: number = 0,
+			endAngle: number = 0;
+		
+		this.g.strokeStyle = '#000';
+
+		data.map((pie, index) => {
+			if(index === 0) {
+				startAngle = 0;
+				endAngle = pie.ele.angle;
+			}
+			else {
+				startAngle = endAngle;
+				endAngle = startAngle + pie.ele.angle;
+			}
+
+			this.g.beginPath();
+			this.g.moveTo(this.centerPoint[0], this.centerPoint[1]);
+			this.g.arc(this.centerPoint[0], this.centerPoint[1], this.config.radius, _degree2Radian(startAngle), _degree2Radian(endAngle));
+			this.g.closePath();
+
+			if(this.g.isPointInPath(x, y)) {
+				this.g.stroke();
+				flag = pie;
+			}
+		});
+		
+		return flag;
+	};
+
+	setTitle() {
+		if(this.config.title) {
+			this.g.save();
+			this.g.textAlign = 'center';
+			new DrawTitle(this.g, this.config.title).render(this.centerPoint[0], 30);
+			this.g.restore();
+		}
+
+		return this;
+	}
+
+	//显示项目的标签
+	paintLabel() {
+		return this;
+	};
+
+	reRender(x: number, y: number) {
+		this.g.save();
+
+		//绘制图表结果
+		this
+			.renderResult(this.data)
+			.setTitle()
+			.paintTipCase(x, y, this.mouseSelect(this.data, x, y));
+
+		this.g.restore();
+	};
+
+	render(itemList: string[]) {
+		this.itemList = itemList;
+		
+		//遍历items分析数据
+		this.config.items.map((item, index) => {
+			if(this.itemList) {
+				this.itemList.map(label => {
+					if(item.label === label) {
+						this.data.push({
+							ele: this.analyseItems(item, index),
+							color: item.color,
+							label: item.label
+						});
+					}
+				});
+			}
+			else {
+				this.data.push({
+					ele: this.analyseItems(item, index),
+					color: item.color,
+					label: item.label
+				});
+			}
+		});
+
+		//第一次渲染
+		this.reRender(0, 0);
+
+		return this;
+	};
+}
+
+
+
+/*
+* @PieChart: 环形图表
+* 继承自PieChart
+*
+* 重写方法：
+* paintTipCase
+* mouseSelect
+*/
+
+class AnnularChart extends PieChart {
+
+	//环形宽度
+	private width: number = 65;
+
+	constructor(Graphics, config) {
+		super(Graphics, config);
+
+		this.config.width = this.config.width === undefined? this.width: this.config.width;
+	}
+
+	//绘制中心白色的圆
+	private drawCenterCircle() {
+		new DrawArc(this.g, this.config.radius - this.config.width, 360)
+			.render(this.centerPoint[0], this.centerPoint[1], '#fff');
+
+		return this;
+	}
+
+	//鼠标选中项目效果处理
+	mouseSelect(data, x: number, y: number) {
+		//标志符：用作判断鼠标是否移到了圆点里面
+		let flag: object = null,
+			startAngle: number = 0,
+			endAngle: number = 0;
+		
+		this.g.strokeStyle = '#000';
+
+		data.map((pie, index) => {
+			if(index === 0) {
+				startAngle = 0;
+				endAngle = pie.ele.angle;
+			}
+			else {
+				startAngle = endAngle;
+				endAngle = startAngle + pie.ele.angle;
+			}
+
+			if(this.isInAnnular(x, y)) {
+				this.g.beginPath();
+				this.g.moveTo(this.centerPoint[0], this.centerPoint[1]);
+				this.g.arc(this.centerPoint[0], this.centerPoint[1], this.config.radius, _degree2Radian(startAngle), _degree2Radian(endAngle));
+				this.g.closePath();
+				
+				if(this.g.isPointInPath(x, y)) {
+					this.g.stroke();
+
+					this.g.beginPath();
+					this.g.arc(this.centerPoint[0], this.centerPoint[1], this.config.radius - this.config.width, _degree2Radian(startAngle), _degree2Radian(endAngle));
+					this.g.stroke();
+	
+					flag = pie;
+				}
+			}
+		});
+		
+		return flag;
+	};
+
+	//判断是否在圆内
+	private isInAnnular(x: number, y: number) {
+		let inCircle: boolean = false,
+			outAnnular: boolean = false;
+
+		this.g.beginPath();
+		this.g.arc(this.centerPoint[0], this.centerPoint[1], this.config.radius, 0, 2*Math.PI);
+
+		if(this.g.isPointInPath(x, y)) {
+			inCircle = true;
+		}
+
+		this.g.beginPath();
+		this.g.arc(this.centerPoint[0], this.centerPoint[1], this.config.radius - this.config.width, 0, 2*Math.PI);
+
+		if(!this.g.isPointInPath(x, y)) {
+			outAnnular = true;
+		}
+
+		return outAnnular && inCircle;
+	}
+
+	//浮动提示框
+	paintTipCase(x: number, y: number, flag) {
+
+		this.drawCenterCircle();
+
+		if(this.isInAnnular(x, y)) {
+			this.g.fillStyle = 'rgba(0, 0, 0, 0.5)';
+
+			if(flag) {
+				this.g.fillRect(x, y - 60, 110, 50);
+				this.g.font = '12px serif';
+				this.g.fillStyle = '#fff';
+				this.g.fillText(`lable: ${flag.label}`, x + 10, y - 45);
+				this.g.fillText(`data: ${flag.ele.data}`, x + 10, y - 30);
+				this.g.fillText(`ratio: ${flag.ele.ratio}`, x + 10, y - 15);
+			}
+		}
+
+		return this;
+	};
+}
 
 
 
@@ -1131,9 +1583,7 @@ class ChartPrototype implements ChartAPI {
 				return new DrawLine(Graphics, x, y, color);
 			},
 			//动绘制方法
-			animate() {
-				
-			}
+			animate: _Animate
 		}
 	}
 
@@ -1203,6 +1653,20 @@ ChartUp.extend({
 	chartClass: PillarChart
 });
 
+//扩展: 饼状图表
+ChartUp.extend({
+	chartType: 'PieChart',
+	chartClass: PieChart
+});
+
+//扩展: 环形图表
+ChartUp.extend({
+	chartType: 'AnnularChart',
+	chartClass: AnnularChart
+});
+
+
+
 
 
 
@@ -1215,116 +1679,151 @@ ChartUp.extend({
 const canvas1 = document.getElementById('canvas1'),
 	  canvas2 = document.getElementById('canvas2'),
 	  canvas3 = document.getElementById('canvas3'),
-	  canvas4 = document.getElementById('canvas4');
+	  canvas4 = document.getElementById('canvas4'),
+	  canvas5 = document.getElementById('canvas5');
 
-// ChartUp.LineChart(canvas1, {
-// 	title: 'Mychart',
-// 	interval: [2, 2],
-//     items: [
-// 		{
-// 			label: 'A',
-// 			points: [[5, 5], [8, 7], [12, 14], [20, 30]],
-// 			color: '#009688'
-// 		},
-// 		{
-// 			label: 'B',
-// 			points: function(x: number) {
-// 				return (1/16)*x*x;
-// 			},
-// 			color: 'green'
-// 		},
-// 		{
-// 			label: 'C',
-// 			points: function(x: number) {
-// 				return (1/20)*Math.pow(Math.E, x);
-// 			},
-// 			color: '#512DA8'
-// 		},
-// 		{
-// 			label: 'D',
-// 			points: function(x: number) {
-// 				return 15*Math.sin(x);
-// 			},
-// 			color: '#FFC107'
-// 		}
-// 	]
-// }).render();
+ChartUp.LineChart(canvas1, {
+	title: 'Mychart',
+	interval: [5, 5],
+    items: [
+		{
+			label: 'A',
+			points: [[5, -5], [8, 7], [12, 14], [20, 31]],
+			color: '#009688'
+		},
+		{
+			label: 'B',
+			points: function(x: number) {
+				return (1/16)*x*x;
+			},
+			color: 'green'
+		},
+		{
+			label: 'C',
+			points: function(x: number) {
+				return (1/20)*Math.pow(Math.E, x);
+			},
+			color: '#512DA8'
+		},
+		{
+			label: 'D',
+			points: function(x: number) {
+				return 15*Math.sin(x);
+			},
+			color: '#FFC107'
+		}
+	]
+}).render();
 
+ChartUp.PointChart(canvas2, {
+	title: 'Myanotherchart',
+	interval: [10, 10],
+	grid: false,
+	defaultRadius: 4,
+    items: [{
+		label: 'A',
+		points: Array.from(new Array(50), n => [Math.random()*65, Math.random()*30, 1]),
+		color: '#00796B'
+	}]
+}).render();
 
-
-
-
-// /*
-// * points: [x, y, weight]
-// */
-
-// const p = [];
-
-// for(let i = 0; i < 50; i ++) {
-// 	let t = [];
-// 	t[0] = Math.random()*65;
-// 	t[1] = Math.random()*30;
-
-// 	p.push(t);
-// }
-
-
-// ChartUp.PointChart(canvas2, {
-// 	title: 'Myanotherchart',
-// 	interval: [5, 5],
-// 	grid: false,
-// 	defaultRadius: 4,
-//     items: [{
-// 		label: 'A',
-// 		points: p,
-// 		color: '#00796B'
-// 	}]
-// }).render();
-
-
-
-
-// ChartUp.PillarChart(canvas3, {
-// 	title: 'Thrirdchart',
-// 	interval: [30, 20],
-// 	trendLine: true,
-//     items: [{
-// 		label: 'A',
-// 		height: 20,
-// 		color: '#03A9F4'
-// 	}, 
-// 	{
-// 		label: 'B',
-// 		height: 45,
-// 		color: '#7B1FA2'
-// 	},
-// 	{
-// 		label: 'C',
-// 		height: 37,
-// 		color: '#8BC34A'
-// 	},
-// 	{
-// 		label: 'D',
-// 		height: 50,
-// 		color: '#FF4081'
-// 	},
-// 	{
-// 		label: 'E',
-// 		height: 100,
-// 		color: '#FF5722'
-// 	},
-// 	{
-// 		label: 'F',
-// 		height: 88,
-// 		color: '#5c6bc0'
-// 	}]
-// }).render();
+ChartUp.PillarChart(canvas3, {
+	title: 'Thrirdchart',
+	interval: [30, 20],
+	trendLine: true,
+    items: [{
+		label: 'A',
+		height: 20,
+		color: '#03A9F4'
+	}, 
+	{
+		label: 'B',
+		height: 45,
+		color: '#7B1FA2'
+	},
+	{
+		label: 'C',
+		height: 37,
+		color: '#8BC34A'
+	},
+	{
+		label: 'D',
+		height: 50,
+		color: '#FF4081'
+	},
+	{
+		label: 'E',
+		height: 100,
+		color: '#FF5722'
+	},
+	{
+		label: 'F',
+		height: 88,
+		color: '#5c6bc0'
+	}]
+}).render();
 
 
+ChartUp.PieChart(canvas4, {
+	title: 'PieChart',
+    items: [{
+		label: 'A',
+		data: 25,
+		color: '#ff5722'
+	},
+	{
+		label: 'B',
+		data: 18,
+		color: '#1b5e20'
+	},
+	{
+		label: 'C',
+		data: 20,
+		color: '#1565c0'
+	},
+	{
+		label: 'D',
+		data: 40,
+		color: '#ffa000'
+	}]
+}).render();
 
 
-new DrawArc(canvas4.getContext('2d'), 20, 0, 180).render(100, 100, '#d81b60').next(300, '#009688');
-
+ChartUp.AnnularChart(canvas5, {
+	title: 'AnnularChart',
+	radius: 120,
+	width: 60,
+    items: [{
+		label: 'A',
+		data: 25,
+		color: '#ff5722'
+	},
+	{
+		label: 'B',
+		data: 18,
+		color: '#1b5e20'
+	},
+	{
+		label: 'C',
+		data: 20,
+		color: '#1565c0'
+	},
+	{
+		label: 'D',
+		data: 40,
+		color: '#ffa000'
+	},
+	{
+		label: 'Esss',
+		data: 10,
+		color: '#e6ee9c'
+	},
+	{
+		label: '看电影',
+		data: 28,
+		color: '#7986cb'
+	}]
+}).render();
 
 
 
@@ -1346,8 +1845,13 @@ new DrawArc(canvas4.getContext('2d'), 20, 0, 180).render(100, 100, '#d81b60').ne
 
 window['Chart'] = ChartUp;
 return ChartUp;
+
 })(window);
+
+
+
 
 
 //es6 module
 export default ChartUp;
+

@@ -70,9 +70,10 @@
 "use strict";
 
 /*
-* version: 0.0.1
+* - ChartUp -
+* version: 0.0.2
 * A javascript framework for building visual data. From phenom.
-* 11.9.2017
+* start on 11.9.2017
 */
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -173,7 +174,7 @@ var ChartUp = (function (window) {
     * render: 确定图形坐标，颜色，是否填充
     */
     var DrawArc = /** @class */ (function () {
-        function DrawArc(g, radius, startAngle, endAngle, soild) {
+        function DrawArc(g, radius, angle, soild) {
             if (soild === void 0) { soild = true; }
             this.g = null;
             this.radius = 0;
@@ -184,13 +185,13 @@ var ChartUp = (function (window) {
             this.y = 0;
             this.g = g;
             this.radius = radius;
-            this.startAngle = _degree2Radian(startAngle);
-            this.endAngle = _degree2Radian(endAngle);
+            this.startAngle = 0;
+            this.endAngle = _degree2Radian(angle);
             this.isSoild = soild;
         }
-        DrawArc.prototype.next = function (endAngle, color) {
+        DrawArc.prototype.next = function (angle, color) {
             this.startAngle = this.endAngle;
-            this.endAngle = _degree2Radian(endAngle);
+            this.endAngle = this.endAngle + _degree2Radian(angle);
             this.render(this.x, this.y, color);
             return this;
         };
@@ -203,7 +204,9 @@ var ChartUp = (function (window) {
                     this.g.strokeStyle = color;
             }
             this.g.beginPath();
-            this.g.arc(x, y, this.radius, this.startAngle, this.endAngle);
+            this.g.moveTo(this.x, this.y);
+            this.g.arc(this.x, this.y, this.radius, this.startAngle, this.endAngle);
+            this.g.closePath();
             this.isSoild ?
                 this.g.fill() :
                 this.g.stroke();
@@ -307,11 +310,12 @@ var ChartUp = (function (window) {
             this.lY = this.oY - this.marginTop - 20;
             this.rxEdge = this.oX + this.lX;
             this.ryEdge = this.oY - this.lY;
-            this.xOrigin = this.config.origin[0],
-                this.yOrigin = this.config.origin[1];
-            var xMax = this.getMax(this.config.items, 'x'), yMax = this.getMax(this.config.items, 'y'), xLength = xMax - this.xOrigin, yLength = yMax - this.yOrigin;
+            var xMax = this.getMax(this.config.items, 'x'), yMax = this.getMax(this.config.items, 'y'), xMin = this.getMin(this.config.items, 'x'), yMin = this.getMin(this.config.items, 'y');
             this.xInterval = this.config.interval[0],
                 this.yInterval = this.config.interval[1];
+            this.xOrigin = xMin - this.xInterval,
+                this.yOrigin = yMin - this.yInterval;
+            var xLength = xMax - this.xOrigin, yLength = yMax - this.yOrigin;
             this.xCount = Math.floor(xLength / this.xInterval) + 1,
                 this.yCount = Math.floor(yLength / this.yInterval) + 1;
             this.xEdge = this.xInterval * this.xCount + this.xOrigin,
@@ -331,6 +335,9 @@ var ChartUp = (function (window) {
                 this.yIntervals.push(i * this.yInterval + this.yOrigin);
             }
         }
+        //绘制x=0，y=0的两个轴
+        DrawCoordinateSystem.prototype.baseLine = function () {
+        };
         DrawCoordinateSystem.prototype.rightAngle = function () {
             new DrawLine(this.g, this.marginLeft, this.marginTop)
                 .next(this.oX, this.oY)
@@ -401,18 +408,36 @@ var ChartUp = (function (window) {
                 }));
             }
         };
+        //获取坐标点的最小值
+        DrawCoordinateSystem.prototype.getMin = function (items, dir) {
+            var flag = dir === 'x' ? 0 : 1;
+            //若是柱状图表，则没有x轴的断点，只需要y轴
+            if (this.config.chartType === 'PillarChart') {
+                var pointsArr_2 = [];
+                items.map(function (item) {
+                    pointsArr_2.push(item.height);
+                });
+                return _MIN(pointsArr_2);
+            }
+            else {
+                //判断items是否为数组
+                return _MIN(items.map(function (item) {
+                    if (typeof item.points === 'function') {
+                        return _Gconfig.edge[flag];
+                    }
+                    else {
+                        return _MIN(item.points.map(function (p) { return p[flag]; }));
+                    }
+                }));
+            }
+        };
         return DrawCoordinateSystem;
     }());
     /*
     * @Animate: canvas动绘制的一个封装
-    * next: 下一个坐标点
-    * end: 最后一个坐标点
     */
-    var Animate = /** @class */ (function () {
-        function Animate() {
-        }
-        return Animate;
-    }());
+    var _Animate = function () {
+    };
     /*--------------------工具方法 END-------------------------*/
     /*------------------------------图表类------------------------------------ */
     /*
@@ -438,7 +463,7 @@ var ChartUp = (function (window) {
             this.g = Graphics;
             this.config = config;
             //默认原点为(0, 0)
-            this.config.origin = this.config.origin ? this.config.origin : [0, 0];
+            //this.config.origin = this.config.origin? this.config.origin: [0, 0];
             //默认开启网格
             this.config.grid = this.config.grid === undefined ? true : this.config.grid;
             //默认开启测量线
@@ -499,18 +524,26 @@ var ChartUp = (function (window) {
         LineChart.prototype.reRender = function (x, y) {
             this.g.save();
             //绘制坐标轴
-            this.drawCoordinateSystem();
-            //若设置网格，则描绘网格
-            this.config.grid && this.drawGridX().drawGridY();
-            //绘制图表结果
-            this
+            this.drawCoordinateSystem()
+                .paintGrid()
                 .renderResult(this.data)
                 .paintTargetLineX(x, y)
                 .paintTargetLineY(x, y)
-                .paintTipCase(x, y, this.mouseSelect(this.data, x, y));
+                .paintTipCase(x, y, this.mouseSelect(this.data, x, y))
+                .setTitle()
+                .paintLabel();
+            this.g.restore();
+        };
+        //绘制网格
+        LineChart.prototype.paintGrid = function () {
+            this.config.grid && this.drawGridX().drawGridY();
+            return this;
+        };
+        //设置图表标题
+        LineChart.prototype.setTitle = function () {
             //若设置标题，则描绘标题
             this.config.title && new DrawTitle(this.g, this.config.title).render(40, 30);
-            this.g.restore();
+            return this;
         };
         //绘制坐标轴
         LineChart.prototype.drawCoordinateSystem = function () {
@@ -576,20 +609,34 @@ var ChartUp = (function (window) {
         };
         //绘制横向测量线
         LineChart.prototype.paintTargetLineY = function (x, y) {
+            var vy = this.coordinateSystem.yOrigin + Math.abs((y - this.config.canvasHeight + 45)) * (this.coordinateSystem.yEdge - this.coordinateSystem.yOrigin) / (this.coordinateSystem.lY);
             if (this.isInChart(x, y)) {
                 if (this.config.measureLine) {
                     new DrawLine(this.g, this.coordinateSystem.oX, y, 'rgba(0, 0, 0, 0.2)')
                         .end(this.coordinateSystem.rxEdge, y);
+                    this.g.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                    this.g.rect(this.coordinateSystem.oX + 5, y - 21, 70, 18);
+                    this.g.fill();
+                    this.g.font = '12px serif';
+                    this.g.fillStyle = '#fff';
+                    this.g.fillText("y: " + vy.toFixed(3), this.coordinateSystem.oX + 10, y - 9);
                 }
             }
             return this;
         };
         //绘制纵向测量线
         LineChart.prototype.paintTargetLineX = function (x, y) {
+            var vx = this.coordinateSystem.xOrigin + (x - 45) * (this.coordinateSystem.xEdge - this.coordinateSystem.xOrigin) / (this.coordinateSystem.lX);
             if (this.isInChart(x, y)) {
                 if (this.config.measureLine) {
                     new DrawLine(this.g, x, this.coordinateSystem.ryEdge, 'rgba(0, 0, 0, 0.2)')
                         .end(x, this.coordinateSystem.oY);
+                    this.g.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                    this.g.rect(x + 5, this.coordinateSystem.oY - 21, 70, 18);
+                    this.g.fill();
+                    this.g.font = '12px serif';
+                    this.g.fillStyle = '#fff';
+                    this.g.fillText("x: " + vx.toFixed(3), x + 10, this.coordinateSystem.oY - 8);
                 }
             }
             return this;
@@ -598,24 +645,23 @@ var ChartUp = (function (window) {
         LineChart.prototype.paintTipCase = function (x, y, flag) {
             var vx = this.coordinateSystem.xOrigin + (x - 45) * (this.coordinateSystem.xEdge - this.coordinateSystem.xOrigin) / (this.coordinateSystem.lX), vy = this.coordinateSystem.yOrigin + Math.abs((y - this.config.canvasHeight + 45)) * (this.coordinateSystem.yEdge - this.coordinateSystem.yOrigin) / (this.coordinateSystem.lY);
             if (this.isInChart(x, y)) {
-                this.g.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                this.g.fillStyle = 'rgba(0, 0, 0, 0.7)';
                 if (x + 90 > this.coordinateSystem.rxEdge) {
                     x = this.coordinateSystem.rxEdge - 90;
                 }
-                this.g.fillRect(x + 10, y + 10, 80, 40);
-                this.g.font = '12px serif';
-                this.g.fillStyle = '#fff';
                 if (flag) {
+                    this.g.fillRect(x + 10, y + 10, 80, 40);
+                    this.g.font = '12px serif';
+                    this.g.fillStyle = '#fff';
                     this.g.fillText("x: " + flag.cx.toFixed(3), x + 15, y + 25);
                     this.g.fillText("y: " + flag.cy.toFixed(3), x + 15, y + 40);
                 }
-                else {
-                    this.g.fillText("x: " + vx.toFixed(3), x + 15, y + 25);
-                    this.g.fillText("y: " + vy.toFixed(3), x + 15, y + 40);
-                }
             }
+            return this;
         };
-        LineChart.prototype.paintLabel = function () { };
+        LineChart.prototype.paintLabel = function () {
+            return this;
+        };
         //分析点数据
         LineChart.prototype.analyseItems = function (item, index) {
             var _this = this;
@@ -641,7 +687,7 @@ var ChartUp = (function (window) {
         //绘制点函数
         LineChart.prototype.renderPoints = function (p, color) {
             //绘制第一个点
-            var cyc = new DrawArc(this.g, 3, 0, 360), line = new DrawLine(this.g, p[0].x, p[0].y, color).paint(cyc);
+            var cyc = new DrawArc(this.g, 3, 360), line = new DrawLine(this.g, p[0].x, p[0].y, color).paint(cyc);
             //继续绘制接下去的点
             for (var i = 1, length_1 = p.length; i < length_1; i++) {
                 i === length_1 ?
@@ -738,7 +784,7 @@ var ChartUp = (function (window) {
             var _this = this;
             data.map(function (cir) {
                 cir.ele.map(function (c) {
-                    new DrawArc(_this.g, c.r, 0, 360).render(c.x, c.y, cir.color);
+                    new DrawArc(_this.g, c.r, 360).render(c.x, c.y, cir.color);
                 });
             });
             return this;
@@ -746,7 +792,7 @@ var ChartUp = (function (window) {
         //绘制坐标提升框
         PointChart.prototype.paintTipCase = function (x, y, flag) {
             var vx = (x - 45) * (this.coordinateSystem.xEdge - this.coordinateSystem.xOrigin) / (this.coordinateSystem.lX), vy = Math.abs((y - this.config.canvasHeight + 45)) * (this.coordinateSystem.yEdge - this.coordinateSystem.yOrigin) / (this.coordinateSystem.lY);
-            this.g.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            this.g.fillStyle = 'rgba(0, 0, 0, 0.7)';
             if (x + 90 > this.coordinateSystem.rxEdge) {
                 x = this.coordinateSystem.rxEdge - 90;
             }
@@ -759,20 +805,25 @@ var ChartUp = (function (window) {
                     this.g.fillText("y: " + flag.cy.toFixed(3), x + 15, y + 40);
                     this.g.fillText("weight: " + (flag.w ? flag.w : 'none'), x + 15, y + 55);
                 }
-                else {
-                    this.g.fillRect(x + 10, y + 10, 80, 40);
-                    this.g.font = '12px serif';
-                    this.g.fillStyle = '#fff';
-                    this.g.fillText("x: " + vx.toFixed(3), x + 15, y + 25);
-                    this.g.fillText("y: " + vy.toFixed(3), x + 15, y + 40);
-                }
             }
+            return this;
         };
         return PointChart;
     }(LineChart));
     /*
     * @PillarChart: 柱状图表
     * 继承自LineChart
+    *
+    * 重写方法：
+    * drawCoordinateSystem
+    * drawGridY
+    * analyseItems
+    * paintTargetLineY
+    * paintTipCase
+    * mouseSelect
+    * paintLabel
+    * renderResult
+    * reRender
     */
     var PillarChart = /** @class */ (function (_super) {
         __extends(PillarChart, _super);
@@ -802,6 +853,11 @@ var ChartUp = (function (window) {
             }
             return this;
         };
+        //绘制网格
+        PillarChart.prototype.paintGrid = function () {
+            this.config.grid && this.drawGridY();
+            return this;
+        };
         //分析点数据
         PillarChart.prototype.analyseItems = function (item, index) {
             //经过转换后的高度
@@ -811,8 +867,7 @@ var ChartUp = (function (window) {
                 y: this.coordinateSystem.oY - height,
                 width: this.itemWidth,
                 height: height,
-                cheight: item.height,
-                label: item.label
+                cheight: item.height
             };
         };
         //根据x轴interval计算柱宽
@@ -821,10 +876,17 @@ var ChartUp = (function (window) {
         };
         //绘制横向测量线
         PillarChart.prototype.paintTargetLineY = function (x, y) {
+            var vy = this.coordinateSystem.yOrigin + Math.abs((y - this.config.canvasHeight + 45)) * (this.coordinateSystem.yEdge - this.coordinateSystem.yOrigin) / (this.coordinateSystem.lY);
             if (this.isInChart(x, y)) {
                 if (this.config.measureLine) {
                     new DrawLine(this.g, this.coordinateSystem.oX, y, 'rgba(0, 0, 0, 0.2)')
-                        .end(this.coordinateSystem.rxEdge + 20, y);
+                        .end(this.coordinateSystem.rxEdge, y);
+                    this.g.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                    this.g.rect(this.coordinateSystem.oX + 5, y - 21, 70, 18);
+                    this.g.fill();
+                    this.g.font = '12px serif';
+                    this.g.fillStyle = '#fff';
+                    this.g.fillText("y: " + vy.toFixed(3), this.coordinateSystem.oX + 10, y - 9);
                 }
             }
             return this;
@@ -836,21 +898,16 @@ var ChartUp = (function (window) {
                 x = this.coordinateSystem.rxEdge - 70;
             }
             if (this.isInChart(x, y)) {
-                this.g.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                this.g.fillStyle = 'rgba(0, 0, 0, 0.7)';
                 if (flag) {
                     this.g.fillRect(x, y - 40, 110, 35);
                     this.g.font = '12px serif';
                     this.g.fillStyle = '#fff';
                     this.g.fillText("height: " + flag.ele.cheight.toFixed(3), x + 15, y - 25);
-                    this.g.fillText("lable: " + flag.ele.label, x + 15, y - 10);
-                }
-                else {
-                    this.g.fillRect(x, y - 25, 80, 20);
-                    this.g.font = '12px serif';
-                    this.g.fillStyle = '#fff';
-                    this.g.fillText("y: " + vy.toFixed(3), x + 15, y - 10);
+                    this.g.fillText("lable: " + flag.label, x + 15, y - 10);
                 }
             }
+            return this;
         };
         //鼠标选中元素处理
         PillarChart.prototype.mouseSelect = function (rects, x, y) {
@@ -872,19 +929,22 @@ var ChartUp = (function (window) {
         PillarChart.prototype.drawTrendLine = function () {
             var _this = this;
             var halfWidth = this.itemWidth / 2;
-            var line = null, cir = new DrawArc(this.g, 3, 0, 360, false);
-            this.data.map(function (rect, index) {
-                if (index === 0) {
-                    line = new DrawLine(_this.g, rect.ele.x + halfWidth, rect.ele.y, '#333');
-                }
-                else if (index === _this.data.length) {
-                    line = line.end(rect.ele.x + halfWidth, rect.ele.y);
-                }
-                else {
-                    line = line.next(rect.ele.x + halfWidth, rect.ele.y);
-                }
-                line.paint(cir);
-            });
+            var line = null, cir = new DrawArc(this.g, 3, 360, false);
+            if (this.config.trendLine) {
+                this.data.map(function (rect, index) {
+                    if (index === 0) {
+                        line = new DrawLine(_this.g, rect.ele.x + halfWidth, rect.ele.y, '#333');
+                    }
+                    else if (index === _this.data.length) {
+                        line = line.end(rect.ele.x + halfWidth, rect.ele.y);
+                    }
+                    else {
+                        line = line.next(rect.ele.x + halfWidth, rect.ele.y);
+                    }
+                    line.paint(cir);
+                });
+            }
+            return this;
         };
         //为每一个项目标上名字
         PillarChart.prototype.paintLabel = function () {
@@ -894,7 +954,7 @@ var ChartUp = (function (window) {
             this.g.fillStyle = _Gconfig.defaultColor;
             this.g.textAlign = 'center';
             this.data.map(function (rect) {
-                _this.g.fillText(rect.ele.label, rect.ele.x + halfWidth, _this.coordinateSystem.oY + 20);
+                _this.g.fillText(rect.label, rect.ele.x + halfWidth, _this.coordinateSystem.oY + 20);
             });
             this.g.restore();
             return this;
@@ -910,23 +970,277 @@ var ChartUp = (function (window) {
         PillarChart.prototype.reRender = function (x, y) {
             this.g.save();
             //绘制坐标轴
-            this.drawCoordinateSystem();
-            //若设置网格，则描绘网格
-            this.config.grid && this.drawGridY();
-            //绘制图表结果
-            this
+            this.drawCoordinateSystem()
+                .paintGrid()
                 .renderResult(this.data)
                 .paintLabel()
                 .paintTargetLineY(x, y)
-                .paintTipCase(x, y, this.mouseSelect(this.data, x, y));
-            //绘制趋势线
-            this.config.trendLine && this.drawTrendLine();
-            //若设置标题，则描绘标题
-            this.config.title && new DrawTitle(this.g, this.config.title).render(40, 30);
+                .paintTipCase(x, y, this.mouseSelect(this.data, x, y))
+                .drawTrendLine()
+                .setTitle();
             this.g.restore();
         };
         return PillarChart;
     }(LineChart));
+    /*
+    * @PieChart: 饼状图表
+    */
+    var PieChart = /** @class */ (function () {
+        function PieChart(Graphics, config) {
+            this.g = null;
+            this.config = null;
+            this.itemList = [];
+            //存放分析好的数据
+            this.data = [];
+            //图形默认半径
+            this.radius = 120;
+            //画布的中心点，用作圆心
+            this.centerPoint = [];
+            //数据总和
+            this.total = 0;
+            this.g = Graphics;
+            this.config = config;
+            //设置默认半径
+            this.config.radius = this.config.radius === undefined ? this.radius : this.config.radius;
+            //计算中心点
+            this.centerPoint = [this.config.canvasWidth / 2, this.config.canvasHeight / 2];
+            //计算总和
+            this.total = this.sum(this.config.items);
+            this.bindMouseEvent();
+        }
+        //计算数据量总和
+        PieChart.prototype.sum = function (items) {
+            return items.map(function (item) { return item.data; }).reduce(function (prev, cur, index, arr) { return prev + cur; });
+        };
+        //数据分析函数，对用户输入的数据集进行分析运算
+        PieChart.prototype.analyseItems = function (item, index) {
+            return {
+                data: item.data,
+                angle: (item.data * 360) / this.total,
+                ratio: ((item.data / this.total) * 100).toFixed(1) + '%'
+            };
+        };
+        ;
+        //为图表绑定鼠标事件
+        PieChart.prototype.bindMouseEvent = function () {
+            var _this = this;
+            this.config.canvas.addEventListener('mousemove', function (e) {
+                var x = e.clientX - _this.config.canvas.getBoundingClientRect().left, y = e.clientY - _this.config.canvas.getBoundingClientRect().top;
+                _this.g.clearRect(0, 0, _this.config.canvasWidth, _this.config.canvasHeight);
+                _this.reRender(x, y);
+            });
+            return this;
+        };
+        ;
+        //结果渲染，将分析好的数据渲染出来
+        PieChart.prototype.renderResult = function (data) {
+            var _this = this;
+            var cir = null;
+            data.map(function (pie) {
+                if (!cir) {
+                    cir = new DrawArc(_this.g, _this.config.radius, pie.ele.angle)
+                        .render(_this.centerPoint[0], _this.centerPoint[1], pie.color);
+                }
+                else {
+                    cir = cir.next(pie.ele.angle, pie.color);
+                }
+            });
+            return this;
+        };
+        ;
+        //判断是否在圆内
+        PieChart.prototype.isInCircle = function (x, y) {
+            this.g.beginPath();
+            this.g.arc(this.centerPoint[0], this.centerPoint[1], this.config.radius, 0, 2 * Math.PI);
+            return this.g.isPointInPath(x, y);
+        };
+        //浮动提示框
+        PieChart.prototype.paintTipCase = function (x, y, flag) {
+            if (this.isInCircle(x, y)) {
+                this.g.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                if (flag) {
+                    this.g.fillRect(x, y - 60, 110, 50);
+                    this.g.font = '12px serif';
+                    this.g.fillStyle = '#fff';
+                    this.g.fillText("lable: " + flag.label, x + 10, y - 45);
+                    this.g.fillText("data: " + flag.ele.data, x + 10, y - 30);
+                    this.g.fillText("ratio: " + flag.ele.ratio, x + 10, y - 15);
+                }
+            }
+            return this;
+        };
+        ;
+        //鼠标选中项目效果处理
+        PieChart.prototype.mouseSelect = function (data, x, y) {
+            var _this = this;
+            //标志符：用作判断鼠标是否移到了圆点里面
+            var flag = null, startAngle = 0, endAngle = 0;
+            this.g.strokeStyle = '#000';
+            data.map(function (pie, index) {
+                if (index === 0) {
+                    startAngle = 0;
+                    endAngle = pie.ele.angle;
+                }
+                else {
+                    startAngle = endAngle;
+                    endAngle = startAngle + pie.ele.angle;
+                }
+                _this.g.beginPath();
+                _this.g.moveTo(_this.centerPoint[0], _this.centerPoint[1]);
+                _this.g.arc(_this.centerPoint[0], _this.centerPoint[1], _this.config.radius, _degree2Radian(startAngle), _degree2Radian(endAngle));
+                _this.g.closePath();
+                if (_this.g.isPointInPath(x, y)) {
+                    _this.g.stroke();
+                    flag = pie;
+                }
+            });
+            return flag;
+        };
+        ;
+        PieChart.prototype.setTitle = function () {
+            if (this.config.title) {
+                this.g.save();
+                this.g.textAlign = 'center';
+                new DrawTitle(this.g, this.config.title).render(this.centerPoint[0], 30);
+                this.g.restore();
+            }
+            return this;
+        };
+        //显示项目的标签
+        PieChart.prototype.paintLabel = function () {
+            return this;
+        };
+        ;
+        PieChart.prototype.reRender = function (x, y) {
+            this.g.save();
+            //绘制图表结果
+            this
+                .renderResult(this.data)
+                .setTitle()
+                .paintTipCase(x, y, this.mouseSelect(this.data, x, y));
+            this.g.restore();
+        };
+        ;
+        PieChart.prototype.render = function (itemList) {
+            var _this = this;
+            this.itemList = itemList;
+            //遍历items分析数据
+            this.config.items.map(function (item, index) {
+                if (_this.itemList) {
+                    _this.itemList.map(function (label) {
+                        if (item.label === label) {
+                            _this.data.push({
+                                ele: _this.analyseItems(item, index),
+                                color: item.color,
+                                label: item.label
+                            });
+                        }
+                    });
+                }
+                else {
+                    _this.data.push({
+                        ele: _this.analyseItems(item, index),
+                        color: item.color,
+                        label: item.label
+                    });
+                }
+            });
+            //第一次渲染
+            this.reRender(0, 0);
+            return this;
+        };
+        ;
+        return PieChart;
+    }());
+    /*
+    * @PieChart: 环形图表
+    * 继承自PieChart
+    *
+    * 重写方法：
+    * paintTipCase
+    * mouseSelect
+    */
+    var AnnularChart = /** @class */ (function (_super) {
+        __extends(AnnularChart, _super);
+        function AnnularChart(Graphics, config) {
+            var _this = _super.call(this, Graphics, config) || this;
+            //环形宽度
+            _this.width = 65;
+            _this.config.width = _this.config.width === undefined ? _this.width : _this.config.width;
+            return _this;
+        }
+        //绘制中心白色的圆
+        AnnularChart.prototype.drawCenterCircle = function () {
+            new DrawArc(this.g, this.config.radius - this.config.width, 360)
+                .render(this.centerPoint[0], this.centerPoint[1], '#fff');
+            return this;
+        };
+        //鼠标选中项目效果处理
+        AnnularChart.prototype.mouseSelect = function (data, x, y) {
+            var _this = this;
+            //标志符：用作判断鼠标是否移到了圆点里面
+            var flag = null, startAngle = 0, endAngle = 0;
+            this.g.strokeStyle = '#000';
+            data.map(function (pie, index) {
+                if (index === 0) {
+                    startAngle = 0;
+                    endAngle = pie.ele.angle;
+                }
+                else {
+                    startAngle = endAngle;
+                    endAngle = startAngle + pie.ele.angle;
+                }
+                if (_this.isInAnnular(x, y)) {
+                    _this.g.beginPath();
+                    _this.g.moveTo(_this.centerPoint[0], _this.centerPoint[1]);
+                    _this.g.arc(_this.centerPoint[0], _this.centerPoint[1], _this.config.radius, _degree2Radian(startAngle), _degree2Radian(endAngle));
+                    _this.g.closePath();
+                    if (_this.g.isPointInPath(x, y)) {
+                        _this.g.stroke();
+                        _this.g.beginPath();
+                        _this.g.arc(_this.centerPoint[0], _this.centerPoint[1], _this.config.radius - _this.config.width, _degree2Radian(startAngle), _degree2Radian(endAngle));
+                        _this.g.stroke();
+                        flag = pie;
+                    }
+                }
+            });
+            return flag;
+        };
+        ;
+        //判断是否在圆内
+        AnnularChart.prototype.isInAnnular = function (x, y) {
+            var inCircle = false, outAnnular = false;
+            this.g.beginPath();
+            this.g.arc(this.centerPoint[0], this.centerPoint[1], this.config.radius, 0, 2 * Math.PI);
+            if (this.g.isPointInPath(x, y)) {
+                inCircle = true;
+            }
+            this.g.beginPath();
+            this.g.arc(this.centerPoint[0], this.centerPoint[1], this.config.radius - this.config.width, 0, 2 * Math.PI);
+            if (!this.g.isPointInPath(x, y)) {
+                outAnnular = true;
+            }
+            return outAnnular && inCircle;
+        };
+        //浮动提示框
+        AnnularChart.prototype.paintTipCase = function (x, y, flag) {
+            this.drawCenterCircle();
+            if (this.isInAnnular(x, y)) {
+                this.g.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                if (flag) {
+                    this.g.fillRect(x, y - 60, 110, 50);
+                    this.g.font = '12px serif';
+                    this.g.fillStyle = '#fff';
+                    this.g.fillText("lable: " + flag.label, x + 10, y - 45);
+                    this.g.fillText("data: " + flag.ele.data, x + 10, y - 30);
+                    this.g.fillText("ratio: " + flag.ele.ratio, x + 10, y - 15);
+                }
+            }
+            return this;
+        };
+        ;
+        return AnnularChart;
+    }(PieChart));
     /*------------------------------图表类-END----------------------------------- */
     /*---------------------------ChartUp主类------------------------------- */
     var ChartPrototype = /** @class */ (function () {
@@ -942,8 +1256,7 @@ var ChartUp = (function (window) {
                     return new DrawLine(Graphics, x, y, color);
                 },
                 //动绘制方法
-                animate: function () {
-                }
+                animate: _Animate
             };
         }
         ChartPrototype.prototype.config = function (c) {
@@ -996,97 +1309,154 @@ var ChartUp = (function (window) {
         chartType: 'PillarChart',
         chartClass: PillarChart
     });
+    //扩展: 饼状图表
+    ChartUp.extend({
+        chartType: 'PieChart',
+        chartClass: PieChart
+    });
+    //扩展: 环形图表
+    ChartUp.extend({
+        chartType: 'AnnularChart',
+        chartClass: AnnularChart
+    });
     /*------------------------------模拟使用------------------------------------ */
-    var canvas1 = document.getElementById('canvas1'), canvas2 = document.getElementById('canvas2'), canvas3 = document.getElementById('canvas3'), canvas4 = document.getElementById('canvas4');
-    // ChartUp.LineChart(canvas1, {
-    // 	title: 'Mychart',
-    // 	interval: [2, 2],
-    //     items: [
-    // 		{
-    // 			label: 'A',
-    // 			points: [[5, 5], [8, 7], [12, 14], [20, 30]],
-    // 			color: '#009688'
-    // 		},
-    // 		{
-    // 			label: 'B',
-    // 			points: function(x: number) {
-    // 				return (1/16)*x*x;
-    // 			},
-    // 			color: 'green'
-    // 		},
-    // 		{
-    // 			label: 'C',
-    // 			points: function(x: number) {
-    // 				return (1/20)*Math.pow(Math.E, x);
-    // 			},
-    // 			color: '#512DA8'
-    // 		},
-    // 		{
-    // 			label: 'D',
-    // 			points: function(x: number) {
-    // 				return 15*Math.sin(x);
-    // 			},
-    // 			color: '#FFC107'
-    // 		}
-    // 	]
-    // }).render();
-    // /*
-    // * points: [x, y, weight]
-    // */
-    // const p = [];
-    // for(let i = 0; i < 50; i ++) {
-    // 	let t = [];
-    // 	t[0] = Math.random()*65;
-    // 	t[1] = Math.random()*30;
-    // 	p.push(t);
-    // }
-    // ChartUp.PointChart(canvas2, {
-    // 	title: 'Myanotherchart',
-    // 	interval: [5, 5],
-    // 	grid: false,
-    // 	defaultRadius: 4,
-    //     items: [{
-    // 		label: 'A',
-    // 		points: p,
-    // 		color: '#00796B'
-    // 	}]
-    // }).render();
-    // ChartUp.PillarChart(canvas3, {
-    // 	title: 'Thrirdchart',
-    // 	interval: [30, 20],
-    // 	trendLine: true,
-    //     items: [{
-    // 		label: 'A',
-    // 		height: 20,
-    // 		color: '#03A9F4'
-    // 	}, 
-    // 	{
-    // 		label: 'B',
-    // 		height: 45,
-    // 		color: '#7B1FA2'
-    // 	},
-    // 	{
-    // 		label: 'C',
-    // 		height: 37,
-    // 		color: '#8BC34A'
-    // 	},
-    // 	{
-    // 		label: 'D',
-    // 		height: 50,
-    // 		color: '#FF4081'
-    // 	},
-    // 	{
-    // 		label: 'E',
-    // 		height: 100,
-    // 		color: '#FF5722'
-    // 	},
-    // 	{
-    // 		label: 'F',
-    // 		height: 88,
-    // 		color: '#5c6bc0'
-    // 	}]
-    // }).render();
-    new DrawArc(canvas4.getContext('2d'), 20, 0, 180).render(100, 100, '#d81b60').next(300, '#009688');
+    var canvas1 = document.getElementById('canvas1'), canvas2 = document.getElementById('canvas2'), canvas3 = document.getElementById('canvas3'), canvas4 = document.getElementById('canvas4'), canvas5 = document.getElementById('canvas5');
+    ChartUp.LineChart(canvas1, {
+        title: 'Mychart',
+        interval: [5, 5],
+        items: [
+            {
+                label: 'A',
+                points: [[5, -5], [8, 7], [12, 14], [20, 31]],
+                color: '#009688'
+            },
+            {
+                label: 'B',
+                points: function (x) {
+                    return (1 / 16) * x * x;
+                },
+                color: 'green'
+            },
+            {
+                label: 'C',
+                points: function (x) {
+                    return (1 / 20) * Math.pow(Math.E, x);
+                },
+                color: '#512DA8'
+            },
+            {
+                label: 'D',
+                points: function (x) {
+                    return 15 * Math.sin(x);
+                },
+                color: '#FFC107'
+            }
+        ]
+    }).render();
+    ChartUp.PointChart(canvas2, {
+        title: 'Myanotherchart',
+        interval: [10, 10],
+        grid: false,
+        defaultRadius: 4,
+        items: [{
+                label: 'A',
+                points: Array.from(new Array(50), function (n) { return [Math.random() * 65, Math.random() * 30, 1]; }),
+                color: '#00796B'
+            }]
+    }).render();
+    ChartUp.PillarChart(canvas3, {
+        title: 'Thrirdchart',
+        interval: [30, 20],
+        trendLine: true,
+        items: [{
+                label: 'A',
+                height: 20,
+                color: '#03A9F4'
+            },
+            {
+                label: 'B',
+                height: 45,
+                color: '#7B1FA2'
+            },
+            {
+                label: 'C',
+                height: 37,
+                color: '#8BC34A'
+            },
+            {
+                label: 'D',
+                height: 50,
+                color: '#FF4081'
+            },
+            {
+                label: 'E',
+                height: 100,
+                color: '#FF5722'
+            },
+            {
+                label: 'F',
+                height: 88,
+                color: '#5c6bc0'
+            }]
+    }).render();
+    ChartUp.PieChart(canvas4, {
+        title: 'PieChart',
+        items: [{
+                label: 'A',
+                data: 25,
+                color: '#ff5722'
+            },
+            {
+                label: 'B',
+                data: 18,
+                color: '#1b5e20'
+            },
+            {
+                label: 'C',
+                data: 20,
+                color: '#1565c0'
+            },
+            {
+                label: 'D',
+                data: 40,
+                color: '#ffa000'
+            }]
+    }).render();
+    ChartUp.AnnularChart(canvas5, {
+        title: 'AnnularChart',
+        radius: 120,
+        width: 60,
+        items: [{
+                label: 'A',
+                data: 25,
+                color: '#ff5722'
+            },
+            {
+                label: 'B',
+                data: 18,
+                color: '#1b5e20'
+            },
+            {
+                label: 'C',
+                data: 20,
+                color: '#1565c0'
+            },
+            {
+                label: 'D',
+                data: 40,
+                color: '#ffa000'
+            },
+            {
+                label: 'Esss',
+                data: 10,
+                color: '#e6ee9c'
+            },
+            {
+                label: '看电影',
+                data: 28,
+                color: '#7986cb'
+            }]
+    }).render();
     window['Chart'] = ChartUp;
     return ChartUp;
 })(window);
