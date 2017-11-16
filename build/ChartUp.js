@@ -310,7 +310,7 @@ var ChartUp = (function (window) {
             this.lY = this.oY - this.marginTop - 20;
             this.rxEdge = this.oX + this.lX;
             this.ryEdge = this.oY - this.lY;
-            var xMax = this.getMax(this.config.items, 'x'), yMax = this.getMax(this.config.items, 'y'), xMin = this.getMin(this.config.items, 'x'), yMin = this.getMin(this.config.items, 'y');
+            var xMax = this.getMax(this.config.items, 'x'), yMax = this.getMax(this.config.items, 'y'), xMin = Math.ceil(this.getMin(this.config.items, 'x')), yMin = Math.ceil(this.getMin(this.config.items, 'y'));
             this.xInterval = this.config.interval[0],
                 this.yInterval = this.config.interval[1];
             this.xOrigin = xMin - this.xInterval,
@@ -335,8 +335,29 @@ var ChartUp = (function (window) {
                 this.yIntervals.push(i * this.yInterval + this.yOrigin);
             }
         }
-        //绘制x=0，y=0的两个轴
-        DrawCoordinateSystem.prototype.baseLine = function () {
+        //绘制x=0轴
+        DrawCoordinateSystem.prototype.baseLineX = function () {
+            var y = this.calc(0, 0)['y'], start = this.calc(this.xOrigin, 0)['x'];
+            this.g.save();
+            this.g.lineWidth = 2;
+            if (this.yOrigin < 0) {
+                new DrawLine(this.g, start, y, '#999')
+                    .end(this.rxEdge, y);
+            }
+            this.g.restore();
+            return this;
+        };
+        //绘制y=0轴
+        DrawCoordinateSystem.prototype.baseLineY = function () {
+            var x = this.calc(0, 0)['x'], start = this.calc(0, this.yOrigin)['y'];
+            this.g.save();
+            this.g.lineWidth = 2;
+            if (this.xOrigin < 0) {
+                new DrawLine(this.g, x, start, '#999')
+                    .end(x, this.ryEdge);
+            }
+            this.g.restore();
+            return this;
         };
         DrawCoordinateSystem.prototype.rightAngle = function () {
             new DrawLine(this.g, this.marginLeft, this.marginTop)
@@ -524,8 +545,9 @@ var ChartUp = (function (window) {
         LineChart.prototype.reRender = function (x, y) {
             this.g.save();
             //绘制坐标轴
-            this.drawCoordinateSystem()
+            this
                 .paintGrid()
+                .drawCoordinateSystem()
                 .renderResult(this.data)
                 .paintTargetLineX(x, y)
                 .paintTargetLineY(x, y)
@@ -536,7 +558,9 @@ var ChartUp = (function (window) {
         };
         //绘制网格
         LineChart.prototype.paintGrid = function () {
+            this.g.save();
             this.config.grid && this.drawGridX().drawGridY();
+            this.g.restore();
             return this;
         };
         //设置图表标题
@@ -550,7 +574,9 @@ var ChartUp = (function (window) {
             this.coordinateSystem
                 .rightAngle()
                 .setXIntervalPoint()
-                .setYIntervalPoint();
+                .setYIntervalPoint()
+                .baseLineX()
+                .baseLineY();
             return this;
         };
         //绘制纵向网格
@@ -592,14 +618,16 @@ var ChartUp = (function (window) {
             var _this = this;
             //标志符：用作判断鼠标是否移到了圆点里面
             var flag = null;
-            this.g.fillStyle = '#000';
             circles.map(function (cir) {
                 if (typeof cir.ele !== 'function') {
                     cir.ele.map(function (c) {
                         _this.g.beginPath();
-                        _this.g.arc(c.x, c.y, c.r, 0, 2 * Math.PI);
+                        _this.g.arc(c.x, c.y, c.r + 2, 0, 2 * Math.PI);
                         if (_this.g.isPointInPath(x, y)) {
+                            _this.g.save();
+                            _this.g.fillStyle = cir.color;
                             _this.g.fill();
+                            _this.g.restore();
                             flag = c;
                         }
                     });
@@ -610,6 +638,8 @@ var ChartUp = (function (window) {
         //绘制横向测量线
         LineChart.prototype.paintTargetLineY = function (x, y) {
             var vy = this.coordinateSystem.yOrigin + Math.abs((y - this.config.canvasHeight + 45)) * (this.coordinateSystem.yEdge - this.coordinateSystem.yOrigin) / (this.coordinateSystem.lY);
+            this.g.save();
+            this.g.setLineDash([4, 2]);
             if (this.isInChart(x, y)) {
                 if (this.config.measureLine) {
                     new DrawLine(this.g, this.coordinateSystem.oX, y, 'rgba(0, 0, 0, 0.2)')
@@ -622,11 +652,14 @@ var ChartUp = (function (window) {
                     this.g.fillText("y: " + vy.toFixed(3), this.coordinateSystem.oX + 10, y - 9);
                 }
             }
+            this.g.restore();
             return this;
         };
         //绘制纵向测量线
         LineChart.prototype.paintTargetLineX = function (x, y) {
             var vx = this.coordinateSystem.xOrigin + (x - 45) * (this.coordinateSystem.xEdge - this.coordinateSystem.xOrigin) / (this.coordinateSystem.lX);
+            this.g.save();
+            this.g.setLineDash([4, 2]);
             if (this.isInChart(x, y)) {
                 if (this.config.measureLine) {
                     new DrawLine(this.g, x, this.coordinateSystem.ryEdge, 'rgba(0, 0, 0, 0.2)')
@@ -639,6 +672,7 @@ var ChartUp = (function (window) {
                     this.g.fillText("x: " + vx.toFixed(3), x + 10, this.coordinateSystem.oY - 8);
                 }
             }
+            this.g.restore();
             return this;
         };
         //绘制坐标提升框
@@ -782,11 +816,17 @@ var ChartUp = (function (window) {
         //绘制点函数
         PointChart.prototype.renderResult = function (data) {
             var _this = this;
+            this.g.save();
+            this.g.shadowOffsetX = 1;
+            this.g.shadowOffsetY = 1;
+            this.g.shadowBlur = 2;
+            this.g.shadowColor = "rgba(0, 0, 0, 0.5)";
             data.map(function (cir) {
                 cir.ele.map(function (c) {
                     new DrawArc(_this.g, c.r, 360).render(c.x, c.y, cir.color);
                 });
             });
+            this.g.restore();
             return this;
         };
         //绘制坐标提升框
@@ -840,7 +880,8 @@ var ChartUp = (function (window) {
         PillarChart.prototype.drawCoordinateSystem = function () {
             this.coordinateSystem
                 .rightAngle()
-                .setYIntervalPoint();
+                .setYIntervalPoint()
+                .baseLineX();
             return this;
         };
         //绘制横向网格
@@ -877,6 +918,8 @@ var ChartUp = (function (window) {
         //绘制横向测量线
         PillarChart.prototype.paintTargetLineY = function (x, y) {
             var vy = this.coordinateSystem.yOrigin + Math.abs((y - this.config.canvasHeight + 45)) * (this.coordinateSystem.yEdge - this.coordinateSystem.yOrigin) / (this.coordinateSystem.lY);
+            this.g.save();
+            this.g.setLineDash([4, 2]);
             if (this.isInChart(x, y)) {
                 if (this.config.measureLine) {
                     new DrawLine(this.g, this.coordinateSystem.oX, y, 'rgba(0, 0, 0, 0.2)')
@@ -889,6 +932,7 @@ var ChartUp = (function (window) {
                     this.g.fillText("y: " + vy.toFixed(3), this.coordinateSystem.oX + 10, y - 9);
                 }
             }
+            this.g.restore();
             return this;
         };
         //绘制坐标提升框
@@ -1036,6 +1080,7 @@ var ChartUp = (function (window) {
         PieChart.prototype.renderResult = function (data) {
             var _this = this;
             var cir = null;
+            this.g.save();
             data.map(function (pie) {
                 if (!cir) {
                     cir = new DrawArc(_this.g, _this.config.radius, pie.ele.angle)
@@ -1045,6 +1090,7 @@ var ChartUp = (function (window) {
                     cir = cir.next(pie.ele.angle, pie.color);
                 }
             });
+            this.g.restore();
             return this;
         };
         ;
@@ -1075,8 +1121,9 @@ var ChartUp = (function (window) {
             var _this = this;
             //标志符：用作判断鼠标是否移到了圆点里面
             var flag = null, startAngle = 0, endAngle = 0;
-            this.g.strokeStyle = '#000';
             data.map(function (pie, index) {
+                _this.g.save();
+                _this.g.fillStyle = pie.color;
                 if (index === 0) {
                     startAngle = 0;
                     endAngle = pie.ele.angle;
@@ -1087,12 +1134,17 @@ var ChartUp = (function (window) {
                 }
                 _this.g.beginPath();
                 _this.g.moveTo(_this.centerPoint[0], _this.centerPoint[1]);
-                _this.g.arc(_this.centerPoint[0], _this.centerPoint[1], _this.config.radius, _degree2Radian(startAngle), _degree2Radian(endAngle));
+                _this.g.arc(_this.centerPoint[0], _this.centerPoint[1], _this.config.radius + _this.config.radius * 0.15, _degree2Radian(startAngle), _degree2Radian(endAngle));
                 _this.g.closePath();
                 if (_this.g.isPointInPath(x, y)) {
-                    _this.g.stroke();
+                    _this.g.shadowOffsetX = 2;
+                    _this.g.shadowOffsetY = 2;
+                    _this.g.shadowBlur = 8;
+                    _this.g.shadowColor = "rgba(0, 0, 0, 0.5)";
+                    _this.g.fill();
                     flag = pie;
                 }
+                _this.g.restore();
             });
             return flag;
         };
@@ -1327,7 +1379,7 @@ var ChartUp = (function (window) {
         items: [
             {
                 label: 'A',
-                points: [[5, -5], [8, 7], [12, 14], [20, 31]],
+                points: [[3, 6], [8, 7], [12, 14], [20, 31]],
                 color: '#009688'
             },
             {
@@ -1347,7 +1399,7 @@ var ChartUp = (function (window) {
             {
                 label: 'D',
                 points: function (x) {
-                    return 15 * Math.sin(x);
+                    return 15 * Math.sin(x) + 20;
                 },
                 color: '#FFC107'
             }
@@ -1355,12 +1407,12 @@ var ChartUp = (function (window) {
     }).render();
     ChartUp.PointChart(canvas2, {
         title: 'Myanotherchart',
-        interval: [10, 10],
+        interval: [5, 5],
         grid: false,
         defaultRadius: 4,
         items: [{
                 label: 'A',
-                points: Array.from(new Array(50), function (n) { return [Math.random() * 65, Math.random() * 30, 1]; }),
+                points: Array.from(new Array(50), function (n) { return [Math.random() * 65, Math.random() * 30, Math.floor(Math.random() * 20)]; }),
                 color: '#00796B'
             }]
     }).render();
@@ -1375,7 +1427,7 @@ var ChartUp = (function (window) {
             },
             {
                 label: 'B',
-                height: 45,
+                height: -25,
                 color: '#7B1FA2'
             },
             {
@@ -1420,6 +1472,16 @@ var ChartUp = (function (window) {
                 label: 'D',
                 data: 40,
                 color: '#ffa000'
+            },
+            {
+                label: 'E',
+                data: 15,
+                color: '#C2185B'
+            },
+            {
+                label: 'F',
+                data: 18,
+                color: '#5D4037'
             }]
     }).render();
     ChartUp.AnnularChart(canvas5, {

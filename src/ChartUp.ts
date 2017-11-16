@@ -386,8 +386,8 @@ class DrawCoordinateSystem {
 
 		const xMax: number = this.getMax(this.config.items, 'x'),
 			  yMax: number = this.getMax(this.config.items, 'y'),
-			  xMin: number = this.getMin(this.config.items, 'x'),
-			  yMin: number = this.getMin(this.config.items, 'y');
+			  xMin: number = Math.ceil(this.getMin(this.config.items, 'x')),
+			  yMin: number = Math.ceil(this.getMin(this.config.items, 'y'));
 
 		this.xInterval = this.config.interval[0],
 		this.yInterval = this.config.interval[1];
@@ -422,9 +422,40 @@ class DrawCoordinateSystem {
 
 	}
 
-	//绘制x=0，y=0的两个轴
-	private baseLine() {
+	//绘制x=0轴
+	private baseLineX() {
+		let y = this.calc(0, 0)['y'],
+			start = this.calc(this.xOrigin, 0)['x'];
 
+		this.g.save();
+		this.g.lineWidth = 2;
+
+		if(this.yOrigin < 0) {
+			new DrawLine(this.g, start, y, '#999')
+				.end(this.rxEdge, y);
+		}
+
+		this.g.restore();
+
+		return this;
+	}
+
+	//绘制y=0轴
+	private baseLineY() {
+		let x = this.calc(0, 0)['x'],
+			start = this.calc(0, this.yOrigin)['y'];
+
+		this.g.save();
+		this.g.lineWidth = 2;
+
+		if(this.xOrigin < 0) {
+			new DrawLine(this.g, x, start, '#999')
+				.end(x, this.ryEdge);
+		}	
+		
+		this.g.restore();
+
+		return this;
 	}
 
 	private rightAngle() {
@@ -662,8 +693,9 @@ class LineChart implements chartModule {
 		this.g.save();
 
 		//绘制坐标轴
-		this.drawCoordinateSystem()
+		this
 			.paintGrid()
+			.drawCoordinateSystem()
 			.renderResult(this.data)
 			.paintTargetLineX(x, y)
 			.paintTargetLineY(x, y)
@@ -676,7 +708,11 @@ class LineChart implements chartModule {
 
 	//绘制网格
 	protected paintGrid() {
+
+		this.g.save();
 		this.config.grid && this.drawGridX().drawGridY();
+		this.g.restore();
+
 		return this;
 	}
 
@@ -692,7 +728,9 @@ class LineChart implements chartModule {
 		this.coordinateSystem
 			.rightAngle()
 			.setXIntervalPoint()
-			.setYIntervalPoint();
+			.setYIntervalPoint()
+			.baseLineX()
+			.baseLineY();
 
 		return this;
 	}
@@ -701,7 +739,6 @@ class LineChart implements chartModule {
 	protected drawGridX() {
 		const xLength = this.coordinateSystem.rxIntervals.length,
 			  topBoundary = this.coordinateSystem.ryEdge;
-			  
 
 		//绘制出网格中纵向的线
 		for(let i = 0; i < xLength; i ++) {
@@ -715,14 +752,14 @@ class LineChart implements chartModule {
 	//绘制横向网格
 	protected drawGridY() {
 		const yLength = this.coordinateSystem.ryIntervals.length,
-			  rightBoundary = this.coordinateSystem.rxEdge;
+			  rightBoundary = this.coordinateSystem.rxEdge;  
 
 		//绘制出网格中横向的线
 		for(let i = 0; i < yLength; i ++) {
 			new DrawLine(this.g, this.coordinateSystem.oX, this.coordinateSystem.ryIntervals[i], '#eee')
 				.end(rightBoundary, this.coordinateSystem.ryIntervals[i]);
 		}	
-		
+
 		return this;
 	}
 
@@ -749,15 +786,16 @@ class LineChart implements chartModule {
 		//标志符：用作判断鼠标是否移到了圆点里面
 		let flag: object = null;
 
-		this.g.fillStyle = '#000';
-		
 		circles.map(cir => {
 			if(typeof cir.ele !== 'function') {
-				cir.ele.map(c => {
+				cir.ele.map(c => {	
 					this.g.beginPath();
-					this.g.arc(c.x, c.y, c.r, 0, 2*Math.PI);
+					this.g.arc(c.x, c.y, c.r + 2, 0, 2*Math.PI);
 					if(this.g.isPointInPath(x, y)) {
+						this.g.save();
+						this.g.fillStyle = cir.color;
 						this.g.fill();
+						this.g.restore();
 						flag = c;
 					}
 				});
@@ -771,6 +809,9 @@ class LineChart implements chartModule {
 	protected paintTargetLineY(x: number, y: number) {
 		
 		const vy: number = this.coordinateSystem.yOrigin + Math.abs((y - this.config.canvasHeight + 45))*(this.coordinateSystem.yEdge - this.coordinateSystem.yOrigin)/(this.coordinateSystem.lY);
+
+		this.g.save();
+		this.g.setLineDash([4, 2]);
 
 		if(this.isInChart(x, y)) { 
 			if(this.config.measureLine) {
@@ -786,6 +827,8 @@ class LineChart implements chartModule {
 			}	
 		}
 
+		this.g.restore();
+
 		return this;
 	}
 
@@ -793,6 +836,9 @@ class LineChart implements chartModule {
 	protected paintTargetLineX(x: number, y: number) {
 
 		const vx: number = this.coordinateSystem.xOrigin + (x - 45)*(this.coordinateSystem.xEdge - this.coordinateSystem.xOrigin)/(this.coordinateSystem.lX);
+
+		this.g.save();
+		this.g.setLineDash([4, 2]);
 
 		if(this.isInChart(x, y)) { 
 			if(this.config.measureLine) {
@@ -808,6 +854,9 @@ class LineChart implements chartModule {
 	
 			}	
 		}
+
+		this.g.restore();
+
 		return this;
 	}
 
@@ -959,6 +1008,7 @@ class PointChart extends LineChart {
 		return weights.map(w => Math.sqrt(w/minWeight)*this.defaultRadius);
 	}
 
+
 	//分析点数据
 	analyseItems(item, index: number) {
 		const radiusList = this.getRadius(item.points.map(i => i[2])),
@@ -983,12 +1033,21 @@ class PointChart extends LineChart {
 
 	//绘制点函数
 	renderResult(data) {
+
+		this.g.save();
+		this.g.shadowOffsetX = 1;
+		this.g.shadowOffsetY = 1;
+		this.g.shadowBlur = 2;
+		this.g.shadowColor = "rgba(0, 0, 0, 0.5)";
+
 		data.map(cir => {
 			cir.ele.map(c => {
 				new DrawArc(this.g, c.r, 360).render(c.x, c.y, cir.color);
 			});
 		});
-		
+
+		this.g.restore();
+
 		return this;
 	}
 
@@ -1054,7 +1113,8 @@ class PillarChart extends LineChart {
 	protected drawCoordinateSystem() {
 		this.coordinateSystem
 			.rightAngle()
-			.setYIntervalPoint();
+			.setYIntervalPoint()
+			.baseLineX();
 
 		return this;
 	}
@@ -1105,6 +1165,9 @@ class PillarChart extends LineChart {
 		
 		const vy: number = this.coordinateSystem.yOrigin + Math.abs((y - this.config.canvasHeight + 45))*(this.coordinateSystem.yEdge - this.coordinateSystem.yOrigin)/(this.coordinateSystem.lY);
 
+		this.g.save();
+		this.g.setLineDash([4, 2]);
+
 		if(this.isInChart(x, y)) { 
 			if(this.config.measureLine) {
 				new DrawLine(this.g, this.coordinateSystem.oX, y, 'rgba(0, 0, 0, 0.2)')
@@ -1118,6 +1181,8 @@ class PillarChart extends LineChart {
 				this.g.fillText(`y: ${vy.toFixed(3)}`, this.coordinateSystem.oX + 10, y - 9);	
 			}	
 		}
+
+		this.g.restore();
 
 		return this;
 	}
@@ -1310,6 +1375,8 @@ class PieChart implements chartModule{
 	renderResult(data) {
 		let cir = null;
 
+		this.g.save();
+
 		data.map(pie => {
 			if(!cir) {
 				cir = new DrawArc(this.g, this.config.radius, pie.ele.angle)
@@ -1319,6 +1386,8 @@ class PieChart implements chartModule{
 				cir = cir.next(pie.ele.angle, pie.color);
 			}
 		});
+
+		this.g.restore();
 
 		return this;
 	};
@@ -1356,9 +1425,12 @@ class PieChart implements chartModule{
 			startAngle: number = 0,
 			endAngle: number = 0;
 		
-		this.g.strokeStyle = '#000';
-
 		data.map((pie, index) => {
+
+			this.g.save();
+
+			this.g.fillStyle = pie.color;
+
 			if(index === 0) {
 				startAngle = 0;
 				endAngle = pie.ele.angle;
@@ -1370,13 +1442,19 @@ class PieChart implements chartModule{
 
 			this.g.beginPath();
 			this.g.moveTo(this.centerPoint[0], this.centerPoint[1]);
-			this.g.arc(this.centerPoint[0], this.centerPoint[1], this.config.radius, _degree2Radian(startAngle), _degree2Radian(endAngle));
+			this.g.arc(this.centerPoint[0], this.centerPoint[1], this.config.radius + this.config.radius*0.15, _degree2Radian(startAngle), _degree2Radian(endAngle));
 			this.g.closePath();
 
 			if(this.g.isPointInPath(x, y)) {
-				this.g.stroke();
+				this.g.shadowOffsetX = 2;
+				this.g.shadowOffsetY = 2;
+				this.g.shadowBlur = 8;
+				this.g.shadowColor = "rgba(0, 0, 0, 0.5)";
+				this.g.fill();
 				flag = pie;
 			}
+
+			this.g.restore();
 		});
 		
 		return flag;
@@ -1688,7 +1766,7 @@ ChartUp.LineChart(canvas1, {
     items: [
 		{
 			label: 'A',
-			points: [[5, -5], [8, 7], [12, 14], [20, 31]],
+			points: [[3, 6], [8, 7], [12, 14], [20, 31]],
 			color: '#009688'
 		},
 		{
@@ -1708,7 +1786,7 @@ ChartUp.LineChart(canvas1, {
 		{
 			label: 'D',
 			points: function(x: number) {
-				return 15*Math.sin(x);
+				return 15*Math.sin(x) + 20;
 			},
 			color: '#FFC107'
 		}
@@ -1717,12 +1795,12 @@ ChartUp.LineChart(canvas1, {
 
 ChartUp.PointChart(canvas2, {
 	title: 'Myanotherchart',
-	interval: [10, 10],
+	interval: [5, 5],
 	grid: false,
 	defaultRadius: 4,
     items: [{
 		label: 'A',
-		points: Array.from(new Array(50), n => [Math.random()*65, Math.random()*30, 1]),
+		points: Array.from(new Array(50), n => [Math.random()*65, Math.random()*30, Math.floor(Math.random()*20)]),
 		color: '#00796B'
 	}]
 }).render();
@@ -1738,7 +1816,7 @@ ChartUp.PillarChart(canvas3, {
 	}, 
 	{
 		label: 'B',
-		height: 45,
+		height: -25,
 		color: '#7B1FA2'
 	},
 	{
@@ -1785,6 +1863,16 @@ ChartUp.PieChart(canvas4, {
 		label: 'D',
 		data: 40,
 		color: '#ffa000'
+	},
+	{
+		label: 'E',
+		data: 15,
+		color: '#C2185B'
+	},
+	{
+		label: 'F',
+		data: 18,
+		color: '#5D4037'
 	}]
 }).render();
 
