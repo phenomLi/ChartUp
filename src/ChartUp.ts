@@ -53,9 +53,6 @@ export default interface chartModule {
 	*/
 	mouseSelect(data, x: number, y: number);
 
-	//显示图表的标题
-	setTitle();
-
 	//显示项目的标签
 	paintLabel();
 
@@ -332,9 +329,7 @@ class DrawCoordinateSystem {
 	private config = null;
 
 	//设置坐标系与canvas边缘的距离
-	private marginTop: number = 45;
-	private marginLeft: number = 45;
-	private marginBottom: number = 45;
+	private margin: number = 45;
 
 	//真实原点
 	public oX: number = 0;
@@ -375,22 +370,22 @@ class DrawCoordinateSystem {
 		this.g = g;
 		this.config = config;
 
-		this.oX = this.marginLeft;
-		this.oY = this.config.canvasHeight - this.marginBottom;
+		this.oX = this.margin;
+		this.oY = this.config.canvasHeight - this.margin;
 
-		this.lX = this.config.canvasWidth - this.oX - 20;
-		this.lY = this.oY - this.marginTop - 20;
+		this.lX = this.config.canvasWidth - this.oX - 20 - this.margin;
+		this.lY = this.oY - this.margin - 20;
 
 		this.rxEdge = this.oX + this.lX;
 		this.ryEdge = this.oY - this.lY;
+
+		this.xInterval = this.config.interval[0],
+		this.yInterval = this.config.interval[1];
 
 		const xMax: number = this.getMax(this.config.items, 'x'),
 			  yMax: number = this.getMax(this.config.items, 'y'),
 			  xMin: number = Math.ceil(this.getMin(this.config.items, 'x')),
 			  yMin: number = Math.ceil(this.getMin(this.config.items, 'y'));
-
-		this.xInterval = this.config.interval[0],
-		this.yInterval = this.config.interval[1];
 
 		this.xOrigin = xMin - this.xInterval,
 		this.yOrigin = yMin - this.yInterval;	  
@@ -459,9 +454,9 @@ class DrawCoordinateSystem {
 	}
 
 	private rightAngle() {
-		new DrawLine(this.g, this.marginLeft, this.marginTop)
+		new DrawLine(this.g, this.margin, this.margin)
 			.next(this.oX, this.oY)
-			.end(this.config.canvasWidth, this.oY);
+			.end(this.config.canvasWidth - this.margin, this.oY);
 
 		return this;
 	}
@@ -564,7 +559,7 @@ class DrawCoordinateSystem {
 			//判断items是否为数组
 			return _MIN(items.map(item => {
 				if(typeof item.points === 'function') {
-					return _Gconfig.edge[flag];
+					return flag? this.yInterval: this.xInterval;
 				}
 				else {
 					return _MIN(item.points.map(p => p[flag]));
@@ -619,8 +614,6 @@ class LineChart implements chartModule {
         this.g = Graphics;
 		this.config = config;
 		
-		//默认原点为(0, 0)
-		//this.config.origin = this.config.origin? this.config.origin: [0, 0];
 		//默认开启网格
 		this.config.grid = this.config.grid === undefined? true: this.config.grid;
 
@@ -638,16 +631,7 @@ class LineChart implements chartModule {
 			return null;
 		}
 
-		
-		/*
-		* @DrawCoordinateSystem: 建立坐标系
-		* 对象返回坐标系的信息，包括
-		* 坐标真实原点
-		* 坐标间隔
-		* 坐标真实间隔
-		*/
-		this.coordinateSystem = new DrawCoordinateSystem(this.g, this.config);
-
+	
 		//设置默认半径
 		if(this.config.defaultRadius) {
 			this.defaultRadius = this.config.defaultRadius;
@@ -655,32 +639,49 @@ class LineChart implements chartModule {
 
 		//绑定鼠标事件
 		this.bindMouseEvent();
+
+		//渲染总体
+		this.render(null);
     }
 
 	//入口
 	render(itemList: string[]) {
-		this.itemList = itemList;
 
-		//遍历items分析数据
-		this.config.items.map((item, index) => {
-			if(this.itemList) {
-				this.itemList.map(label => {
+		let items = [];
+
+		if(itemList) {
+			itemList.map(label => {
+				this.config.items.map(item => {
 					if(item.label === label) {
-						this.data.push({
-							ele: this.analyseItems(item, index),
-							color: item.color,
-							label: item.label
-						});
+						items.push(item);
 					}
 				});
-			}
-			else {
-				this.data.push({
-					ele: this.analyseItems(item, index),
-					color: item.color,
-					label: item.label
-				});
-			}
+			});
+		}
+		else {
+			items = this.config.items;
+		}
+
+		/*
+		* @DrawCoordinateSystem: 建立坐标系
+		* 对象返回坐标系的信息，包括
+		* 坐标真实原点
+		* 坐标间隔
+		* 坐标真实间隔
+		*/
+		this.g.clearRect(0, 0, this.config.canvasWidth, this.config.canvasHeight);
+		this.coordinateSystem = new DrawCoordinateSystem(this.g, this.config);
+		this.itemList = itemList;
+
+		this.data = [];	
+
+		//遍历items分析数据
+		items.map((item, index) => {
+			this.data.push({
+				ele: this.analyseItems(item, index),
+				color: item.color,
+				label: item.label
+			});
 		});
 
 		//第一次渲染
@@ -690,6 +691,7 @@ class LineChart implements chartModule {
 	}
 
 	reRender(x: number, y: number) {
+
 		this.g.save();
 
 		//绘制坐标轴
@@ -700,7 +702,6 @@ class LineChart implements chartModule {
 			.paintTargetLineX(x, y)
 			.paintTargetLineY(x, y)
 			.paintTipCase(x, y, this.mouseSelect(this.data, x, y))
-			.setTitle()
 			.paintLabel();
 
 		this.g.restore();
@@ -713,13 +714,6 @@ class LineChart implements chartModule {
 		this.config.grid && this.drawGridX().drawGridY();
 		this.g.restore();
 
-		return this;
-	}
-
-	//设置图表标题
-	setTitle() {
-		//若设置标题，则描绘标题
-		this.config.title && new DrawTitle(this.g, this.config.title).render(40, 30);
 		return this;
 	}
 
@@ -793,6 +787,10 @@ class LineChart implements chartModule {
 					this.g.arc(c.x, c.y, c.r + 2, 0, 2*Math.PI);
 					if(this.g.isPointInPath(x, y)) {
 						this.g.save();
+						this.g.shadowOffsetX = 1;
+						this.g.shadowOffsetY = 1;
+						this.g.shadowBlur = 2;
+						this.g.shadowColor = "rgba(0, 0, 0, 0.5)";
 						this.g.fillStyle = cir.color;
 						this.g.fill();
 						this.g.restore();
@@ -1097,17 +1095,60 @@ class PointChart extends LineChart {
 */
 class PillarChart extends LineChart {
 
-	//柱宽
-	private itemWidth: number = 0;
-
 	constructor(Graphics, config: object) {
 		super(Graphics, config);
-
-		this.itemWidth = this.getWidth(this.config.interval[0]);
 
 		//是否显示趋势线
 		this.config.trendLine = this.config.trendLine === undefined? false: this.config.trendLine;
 	}
+
+	//入口
+	render(itemList: string[]) {
+		
+		let items = [];
+
+		if(itemList) {
+			itemList.map(label => {
+				this.config.items.map(item => {
+					if(item.label === label) {
+						items.push(item);
+					}
+				});
+			});
+		}
+		else {
+			items = this.config.items;
+		}
+
+		/*
+		* @DrawCoordinateSystem: 建立坐标系
+		* 对象返回坐标系的信息，包括
+		* 坐标真实原点
+		* 坐标间隔
+		* 坐标真实间隔
+		*/
+		this.g.clearRect(0, 0, this.config.canvasWidth, this.config.canvasHeight);
+		this.coordinateSystem = new DrawCoordinateSystem(this.g, this.config);
+		this.itemList = itemList;
+		this.config.itemWidth = this.getWidth(this.config.interval[0]);
+
+		this.data = [];	
+
+		//遍历items分析数据
+		items.map((item, index) => {
+			this.data.push({
+				ele: this.analyseItems(item, index),
+				color: item.color,
+				label: item.label
+			});
+		});
+
+		//第一次渲染
+		this.reRender(0, 0);
+
+		return this;
+	}
+
 
 	//绘制坐标轴
 	protected drawCoordinateSystem() {
@@ -1146,9 +1187,9 @@ class PillarChart extends LineChart {
 		let height = this.coordinateSystem.oY - this.coordinateSystem.calc(0, item.height).y;
 
 		return {
-			x: this.coordinateSystem.oX + (index + 1)*this.config.interval[0] + index*this.itemWidth,
+			x: this.coordinateSystem.oX + (index + 1)*this.config.interval[0] + index*this.config.itemWidth,
 			y: this.coordinateSystem.oY - height,
-			width: this.itemWidth,
+			width: this.config.itemWidth,
 			height: height,
 			cheight: item.height,
 		}
@@ -1156,7 +1197,10 @@ class PillarChart extends LineChart {
 
 	//根据x轴interval计算柱宽
 	private getWidth(xInterval) {
-		return (this.coordinateSystem.lX + 20 - (this.config.items.length + 1)*xInterval)/this.config.items.length;
+
+		const length = this.itemList? this.itemList.length: this.config.items.length;
+
+		return (this.coordinateSystem.lX + 20 - (length + 1)*xInterval)/length;
 	}
 	
 	
@@ -1235,7 +1279,7 @@ class PillarChart extends LineChart {
 	//绘制趋势线
 	private drawTrendLine() {
 
-		const halfWidth = this.itemWidth/2;
+		const halfWidth = this.config.itemWidth/2;
 
 		let line = null,
 			cir = new DrawArc(this.g, 3, 360, false);
@@ -1296,8 +1340,7 @@ class PillarChart extends LineChart {
 			.paintLabel()
 			.paintTargetLineY(x, y)
 			.paintTipCase(x, y, this.mouseSelect(this.data, x, y))
-			.drawTrendLine()
-			.setTitle();	
+			.drawTrendLine()	
 
 		this.g.restore();
 	}
@@ -1338,10 +1381,9 @@ class PieChart implements chartModule{
 		//计算中心点
 		this.centerPoint = [this.config.canvasWidth/2, this.config.canvasHeight/2];
 
-		//计算总和
-		this.total = this.sum(this.config.items);
-
 		this.bindMouseEvent();
+
+		this.render(null);
 	}
 
 	//计算数据量总和
@@ -1460,17 +1502,6 @@ class PieChart implements chartModule{
 		return flag;
 	};
 
-	setTitle() {
-		if(this.config.title) {
-			this.g.save();
-			this.g.textAlign = 'center';
-			new DrawTitle(this.g, this.config.title).render(this.centerPoint[0], 30);
-			this.g.restore();
-		}
-
-		return this;
-	}
-
 	//显示项目的标签
 	paintLabel() {
 		return this;
@@ -1482,35 +1513,49 @@ class PieChart implements chartModule{
 		//绘制图表结果
 		this
 			.renderResult(this.data)
-			.setTitle()
 			.paintTipCase(x, y, this.mouseSelect(this.data, x, y));
 
 		this.g.restore();
 	};
 
 	render(itemList: string[]) {
-		this.itemList = itemList;
+		let items = [];
 		
-		//遍历items分析数据
-		this.config.items.map((item, index) => {
-			if(this.itemList) {
-				this.itemList.map(label => {
+		if(itemList) {
+			itemList.map(label => {
+				this.config.items.map(item => {
 					if(item.label === label) {
-						this.data.push({
-							ele: this.analyseItems(item, index),
-							color: item.color,
-							label: item.label
-						});
+						items.push(item);
 					}
 				});
-			}
-			else {
-				this.data.push({
-					ele: this.analyseItems(item, index),
-					color: item.color,
-					label: item.label
-				});
-			}
+			});
+		}
+		else {
+			items = this.config.items;
+		}
+
+		/*
+		* @DrawCoordinateSystem: 建立坐标系
+		* 对象返回坐标系的信息，包括
+		* 坐标真实原点
+		* 坐标间隔
+		* 坐标真实间隔
+		*/
+		this.g.clearRect(0, 0, this.config.canvasWidth, this.config.canvasHeight);
+		this.itemList = itemList;
+
+		//计算总和
+		this.total = this.sum(items);
+
+		this.data = [];	
+		
+		//遍历items分析数据
+		items.map((item, index) => {
+			this.data.push({
+				ele: this.analyseItems(item, index),
+				color: item.color,
+				label: item.label
+			});
 		});
 
 		//第一次渲染
@@ -1665,6 +1710,78 @@ class ChartPrototype implements ChartAPI {
 		}
 	}
 
+	private changeItem(el: HTMLElement, itemList: string[], config) {
+		const label = el.getAttribute('data-item');
+
+		if(el.className.indexOf('active') > -1) {
+			el.classList.remove('active');
+			itemList.push(label);
+		}
+		else {
+			el.classList.add('active');
+			itemList.splice(itemList.indexOf(label), 1);
+		}
+
+		config.chartIntance.render(itemList);
+	}
+
+	private createTagItem(label: string, color: string, itemList: string[], config): HTMLElement {
+		const tagItem = document.createElement('li'),
+			  tag = document.createElement('span'),
+			  labelText = document.createElement('span');
+
+		const _self = this;
+
+			  tagItem.setAttribute('data-item', label);	
+				
+			  tag.classList.add('tag');
+			  tag.style.backgroundColor = color;
+			  labelText.classList.add('label');
+			
+			  labelText.innerHTML = label;
+
+			  tagItem.appendChild(tag);
+			  tagItem.appendChild(labelText);
+			  
+			  //绑定选择项目事件
+              tagItem.addEventListener('click', function(e) {
+			      _self.changeItem(this, itemList, config);
+			  });
+
+			  return tagItem;
+	}
+
+	//用作为图表添加标题，标签等
+	private addCondition(container: HTMLElement, config) {
+		const title = document.createElement('h2'),
+			  canvas = document.createElement('canvas'),
+			  tagCon = document.createElement('ul'),
+			  itemList = config.items.map(item => item.label);
+
+		container.classList.add('chartUp-container');
+
+		title.innerHTML = config.title? config.title: '';
+		tagCon.classList.add('tag-con');
+		config.items.map(item => {
+			tagCon.appendChild(this.createTagItem(item.label, item.color, itemList, config));
+		});
+		
+		container.appendChild(title);
+		container.appendChild(canvas);
+		container.appendChild(tagCon);
+
+		canvas.width = canvas.offsetWidth;
+		canvas.height = canvas.offsetHeight;
+
+		config['canvas'] = canvas;	
+		
+		//获取canvas绘制布的宽高
+		config['canvasWidth'] = canvas.offsetWidth;
+		config['canvasHeight'] = canvas.offsetHeight;
+
+		return canvas.getContext('2d');
+	}
+
 
 	config(c) {
 		this.configuration = Object.assign(this.configuration, c);
@@ -1691,19 +1808,15 @@ class ChartPrototype implements ChartAPI {
 			return false;
 		}
 		
-		this[chartConfig.chartType] = function(canvas: HTMLElement, config: object) {
-			const Graphics = canvas.getContext('2d');
+		this[chartConfig.chartType] = function(container: string, config: object) {
 
-			config['canvas'] = canvas;	
-
-			//获取canvas绘制布的宽高
-			config['canvasWidth'] = canvas.offsetWidth;
-			config['canvasHeight'] = canvas.offsetHeight;
+			const Graphics = this.addCondition(document.querySelector(container), config);
 
 			//图表类型
 			config['chartType'] = chartConfig.chartType;
 
-			return new chartConfig.chartClass(Graphics, config);
+			//保存图表实例
+			config['chartIntance'] = new chartConfig.chartClass(Graphics, config);
 		}
 		
 	}
@@ -1754,58 +1867,56 @@ ChartUp.extend({
 
 
 
-const canvas1 = document.getElementById('canvas1'),
-	  canvas2 = document.getElementById('canvas2'),
-	  canvas3 = document.getElementById('canvas3'),
-	  canvas4 = document.getElementById('canvas4'),
-	  canvas5 = document.getElementById('canvas5');
-
-ChartUp.LineChart(canvas1, {
+ChartUp.LineChart('#con1', {
 	title: 'Mychart',
 	interval: [5, 5],
     items: [
 		{
-			label: 'A',
-			points: [[3, 6], [8, 7], [12, 14], [20, 31]],
+			label: 'income',
+			points: [[-4, -2], [0, 0], [3, 6], [8, 7], [12, 14], [20, 31], [21, 23], [25, 30], [28, 33]],
 			color: '#009688'
-		},
+		},	
 		{
-			label: 'B',
+			label: 'y = (1/16)*x^2',
 			points: function(x: number) {
 				return (1/16)*x*x;
 			},
 			color: 'green'
 		},
 		{
-			label: 'C',
+			label: 'y = (1/20)*e^x',
 			points: function(x: number) {
 				return (1/20)*Math.pow(Math.E, x);
 			},
 			color: '#512DA8'
 		},
 		{
-			label: 'D',
+			label: 'y = 15*sin(x) + 20',
 			points: function(x: number) {
 				return 15*Math.sin(x) + 20;
 			},
 			color: '#FFC107'
 		}
 	]
-}).render();
+});
 
-ChartUp.PointChart(canvas2, {
+ChartUp.PointChart('#con2', {
 	title: 'Myanotherchart',
 	interval: [5, 5],
-	grid: false,
 	defaultRadius: 4,
     items: [{
-		label: 'A',
+		label: '小绿',
 		points: Array.from(new Array(50), n => [Math.random()*65, Math.random()*30, Math.floor(Math.random()*20)]),
 		color: '#00796B'
+	},
+	{
+		label: '小橙',
+		points: Array.from(new Array(20), n => [Math.random()*40, Math.random()*30, Math.floor(Math.random()*15)]),
+		color: '#E64A19'
 	}]
-}).render();
+});
 
-ChartUp.PillarChart(canvas3, {
+ChartUp.PillarChart('#con3', {
 	title: 'Thrirdchart',
 	interval: [30, 20],
 	trendLine: true,
@@ -1839,11 +1950,12 @@ ChartUp.PillarChart(canvas3, {
 		height: 88,
 		color: '#5c6bc0'
 	}]
-}).render();
+});
 
 
-ChartUp.PieChart(canvas4, {
+ChartUp.PieChart('#con4', {
 	title: 'PieChart',
+	radius: 200,
     items: [{
 		label: 'A',
 		data: 25,
@@ -1874,13 +1986,13 @@ ChartUp.PieChart(canvas4, {
 		data: 18,
 		color: '#5D4037'
 	}]
-}).render();
+});
 
 
-ChartUp.AnnularChart(canvas5, {
+ChartUp.AnnularChart('#con5', {
 	title: 'AnnularChart',
-	radius: 120,
-	width: 60,
+	radius: 200,
+	width: 80,
     items: [{
 		label: 'A',
 		data: 25,
@@ -1911,8 +2023,7 @@ ChartUp.AnnularChart(canvas5, {
 		data: 28,
 		color: '#7986cb'
 	}]
-}).render();
-
+});
 
 
 
