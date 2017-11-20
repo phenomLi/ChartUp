@@ -2,7 +2,7 @@
 /*
 * - ChartUp -
 * version: 0.0.2
-* A javascript framework for building visual data. From phenom.
+* A javascript library for building visual data. From phenom.
 * start on 11.9.2017
 */
 
@@ -14,7 +14,7 @@
 
 //图表类的统一接口，每当扩展一个新的图表类时，都必须实现这个接口
 export default interface chartModule {
-	
+
 	//数据分析函数，对用户输入的数据集进行分析运算
 	/*
 	* @parameter:
@@ -52,9 +52,6 @@ export default interface chartModule {
 	* data: 已经经过analyseItems分析的数据，应为数组
 	*/
 	mouseSelect(data, x: number, y: number);
-
-	//显示项目的标签
-	paintLabel();
 
 	//真正的渲染函数，里面包含了图表所有内容的渲染，包括坐标轴，数据结果，交互提示，图表标题，项目标签等等，同时也是图表每次刷新要执行的函数
 	/*
@@ -109,6 +106,13 @@ const _MAX = function(arr) {
 const _MIN = function(arr) {
 	return Math.min.apply(Math, arr);
 }
+
+
+//数组求和
+const _SUM = function(arr) {
+	return arr.length? arr.reduce((prev, cur, index, arr) => prev + cur): 0;
+}
+
 
 /*--------------------工具方法---------------------*/
 
@@ -207,6 +211,8 @@ class DrawArc {
 
 	private x: number = 0;
 	private y: number = 0;
+
+	private isDrawCircle: boolean = false;
 	
 	constructor(g: object, radius: number, angle: number, soild: boolean = true) {
 		this.g = g;
@@ -215,6 +221,8 @@ class DrawArc {
 		this.startAngle = 0;
 		this.endAngle = _degree2Radian(angle);
 		this.isSoild = soild;
+
+		angle === 360 && (this.isDrawCircle = true);
 	}
 
 	next(angle: number, color?: string) {
@@ -238,7 +246,7 @@ class DrawArc {
 		}
 
 		this.g.beginPath();
-		this.g.moveTo(this.x, this.y);
+		!this.isDrawCircle && this.g.moveTo(this.x, this.y);
 		this.g.arc(this.x, this.y, this.radius, this.startAngle, this.endAngle);
 		this.g.closePath();
 
@@ -327,6 +335,7 @@ class DrawCoordinateSystem {
 
 	private g = null;
 	private config = null;
+	private items = [];
 
 	//设置坐标系与canvas边缘的距离
 	private margin: number = 45;
@@ -366,9 +375,10 @@ class DrawCoordinateSystem {
 	private xInterval: number = 0;
 	private yInterval: number = 0;
 
-	constructor(g, config) {
+	constructor(g, config, items) {
 		this.g = g;
 		this.config = config;
+		this.items = items;
 
 		this.oX = this.margin;
 		this.oY = this.config.canvasHeight - this.margin;
@@ -382,10 +392,10 @@ class DrawCoordinateSystem {
 		this.xInterval = this.config.interval[0],
 		this.yInterval = this.config.interval[1];
 
-		const xMax: number = this.getMax(this.config.items, 'x'),
-			  yMax: number = this.getMax(this.config.items, 'y'),
-			  xMin: number = Math.ceil(this.getMin(this.config.items, 'x')),
-			  yMin: number = Math.ceil(this.getMin(this.config.items, 'y'));
+		const xMax: number = this.getMax(this.items, 'x'),
+			  yMax: number = this.getMax(this.items, 'y'),
+			  xMin: number = Math.ceil(this.getMin(this.items, 'x')),
+			  yMin: number = Math.ceil(this.getMin(this.items, 'y'));
 
 		this.xOrigin = xMin - this.xInterval,
 		this.yOrigin = yMin - this.yInterval;	  
@@ -518,6 +528,10 @@ class DrawCoordinateSystem {
 	private getMax(items, dir: string) {
 		const flag = dir === 'x'? 0: 1;
 
+		if(items.length === 0) {
+			return _Gconfig.edge[flag];
+		}
+
 		//若是柱状图表，则没有x轴的断点，只需要y轴
 		if(this.config.chartType === 'PillarChart') {
 			let pointsArr = [];
@@ -527,6 +541,9 @@ class DrawCoordinateSystem {
 			});
 
 			return _MAX(pointsArr);
+		}
+		else if(this.config.chartType === 'AreaChart') {
+			return _MAX(items[this.items.length - 1].points);
 		}
 		else {
 			//判断items是否为数组
@@ -545,6 +562,10 @@ class DrawCoordinateSystem {
 	private getMin(items, dir: string) {
 		const flag = dir === 'x'? 0: 1;
 
+		if(items.length === 0) {
+			return this.config.interval[flag];
+		}
+
 		//若是柱状图表，则没有x轴的断点，只需要y轴
 		if(this.config.chartType === 'PillarChart') {
 			let pointsArr = [];
@@ -554,6 +575,9 @@ class DrawCoordinateSystem {
 			});
 
 			return _MIN(pointsArr);
+		}
+		else if(this.config.chartType === 'AreaChart') {
+			return _MIN(items[0].points);
 		}
 		else {
 			//判断items是否为数组
@@ -610,6 +634,8 @@ class LineChart implements chartModule {
 
 	protected coordinateSystem = null;
 
+	protected items = [];
+
     constructor(Graphics, config: object) {
         this.g = Graphics;
 		this.config = config;
@@ -641,25 +667,35 @@ class LineChart implements chartModule {
 		this.bindMouseEvent();
 
 		//渲染总体
-		this.render(null);
+		this.indexItem(this.config.items).render(null);
     }
+
+	//为每一个项目标上索引
+	protected indexItem(items) {
+		items.map((item, index) => {
+			item.index = index;
+		});
+
+		return this;
+	}
 
 	//入口
 	render(itemList: string[]) {
 
-		let items = [];
+		this.items = [];
+		this.data = [];	
 
 		if(itemList) {
 			itemList.map(label => {
 				this.config.items.map(item => {
 					if(item.label === label) {
-						items.push(item);
+						this.items.splice(item.index, 0, item);
 					}
 				});
 			});
 		}
 		else {
-			items = this.config.items;
+			this.items = this.config.items;
 		}
 
 		/*
@@ -670,13 +706,11 @@ class LineChart implements chartModule {
 		* 坐标真实间隔
 		*/
 		this.g.clearRect(0, 0, this.config.canvasWidth, this.config.canvasHeight);
-		this.coordinateSystem = new DrawCoordinateSystem(this.g, this.config);
+		this.coordinateSystem = new DrawCoordinateSystem(this.g, this.config, this.items);
 		this.itemList = itemList;
 
-		this.data = [];	
-
 		//遍历items分析数据
-		items.map((item, index) => {
+		this.items.map((item, index) => {
 			this.data.push({
 				ele: this.analyseItems(item, index),
 				color: item.color,
@@ -701,8 +735,7 @@ class LineChart implements chartModule {
 			.renderResult(this.data)
 			.paintTargetLineX(x, y)
 			.paintTargetLineY(x, y)
-			.paintTipCase(x, y, this.mouseSelect(this.data, x, y))
-			.paintLabel();
+			.paintTipCase(x, y, this.mouseSelect(this.data, x, y));
 
 		this.g.restore();
 	}
@@ -883,10 +916,6 @@ class LineChart implements chartModule {
 		return this;
 	}
 
-	paintLabel() {
-		return this;
-	}
-
 
 	//分析点数据
 	analyseItems(item, index: number) {
@@ -915,7 +944,7 @@ class LineChart implements chartModule {
 	//绘制点函数
 	protected renderPoints(p, color: string) {
 		//绘制第一个点
-		let cyc = new DrawArc(this.g, 3, 360),
+		let cyc = new DrawArc(this.g, this.defaultRadius, 360),
 			line = new DrawLine(this.g, p[0].x, p[0].y, color).paint(cyc);
 
 		//继续绘制接下去的点
@@ -1104,20 +1133,21 @@ class PillarChart extends LineChart {
 
 	//入口
 	render(itemList: string[]) {
-		
-		let items = [];
+
+		this.items = [];
+		this.data = [];	
 
 		if(itemList) {
 			itemList.map(label => {
 				this.config.items.map(item => {
 					if(item.label === label) {
-						items.push(item);
+						this.items.splice(item.index, 0, item);
 					}
 				});
 			});
 		}
 		else {
-			items = this.config.items;
+			this.items = this.config.items;
 		}
 
 		/*
@@ -1128,14 +1158,12 @@ class PillarChart extends LineChart {
 		* 坐标真实间隔
 		*/
 		this.g.clearRect(0, 0, this.config.canvasWidth, this.config.canvasHeight);
-		this.coordinateSystem = new DrawCoordinateSystem(this.g, this.config);
+		this.coordinateSystem = new DrawCoordinateSystem(this.g, this.config, this.items);
 		this.itemList = itemList;
 		this.config.itemWidth = this.getWidth(this.config.interval[0]);
 
-		this.data = [];	
-
 		//遍历items分析数据
-		items.map((item, index) => {
+		this.items.map((item, index) => {
 			this.data.push({
 				ele: this.analyseItems(item, index),
 				color: item.color,
@@ -1282,7 +1310,7 @@ class PillarChart extends LineChart {
 		const halfWidth = this.config.itemWidth/2;
 
 		let line = null,
-			cir = new DrawArc(this.g, 3, 360, false);
+			cir = new DrawArc(this.g, this.defaultRadius, 360, false);
 
 		if(this.config.trendLine) {
 			this.data.map((rect, index) => {
@@ -1306,7 +1334,7 @@ class PillarChart extends LineChart {
 	//为每一个项目标上名字
 	paintLabel() {
 
-		const halfWidth = this.itemWidth/2;
+		const halfWidth = this.config.itemWidth/2;
 
 		this.g.save();
 
@@ -1349,6 +1377,197 @@ class PillarChart extends LineChart {
 
 
 
+
+
+/*
+* @AreaChart: 面积图表
+* 继承自LineChart
+*
+* 重写方法：
+*/
+
+class AreaChart extends LineChart {
+
+	constructor(Graphics, config) {
+		super(Graphics, config);
+
+		if(this.config.xAxis === undefined) {
+			console.warn("'xAxis' option is required.");
+			return null;
+		}
+	}
+
+	//入口
+	render(itemList: string[]) {
+		
+		this.items = [];
+		this.data = [];	
+
+		this.config.length = this.config.xAxis.length;
+
+		this.checkDataIsComplete(this.config.items);
+
+		if(itemList) {
+			itemList.map(label => {
+				this.config.items.map(item => {
+					if(item.label === label) {
+						this.items.splice(item.index, 0, item);
+					}
+				});
+			});
+		}
+		else {
+			this.items = this.config.items;
+		}
+
+		this.addData(this.items);
+
+		/*
+		* @DrawCoordinateSystem: 建立坐标系
+		* 对象返回坐标系的信息，包括
+		* 坐标真实原点
+		* 坐标间隔
+		* 坐标真实间隔
+		*/
+		this.g.clearRect(0, 0, this.config.canvasWidth, this.config.canvasHeight);
+		this.coordinateSystem = new DrawCoordinateSystem(this.g, this.config, this.items);
+		this.itemList = itemList;
+
+		//遍历items分析数据
+		this.items.map((item, index) => {
+			this.data.push({
+				ele: this.analyseItems(item, index),
+				color: item.color,
+				label: item.label
+			});
+		});
+
+		//第一次渲染
+		this.reRender(0, 0);
+
+		return this;
+	}
+		
+
+	reRender(x: number, y: number) {
+		
+		this.g.save();
+
+		//绘制坐标轴
+		this
+			.drawXaxis()
+			.paintGrid()
+			.drawCoordinateSystem()
+			.renderResult(this.data)
+			.paintTargetLineX(x, y)
+			.paintTipCase(x, y, this.mouseSelect(this.data, x, y));
+
+		this.g.restore();
+	}
+
+	//检查数据完整性
+	private checkDataIsComplete(items) {
+		let diff: number = 0;
+
+		items.map(item => {
+			diff = this.config.length - item.points.length;
+
+			if(diff > 0) {
+				while(diff --) {
+					item.points.push(0);
+				}
+			}
+		});
+
+		return this;
+	}
+
+	//处理数据：将数据相加
+	private addData(items) {
+		for(let i = 0; i < this.config.length; i ++) {
+			for(let j = 1; j < items.length; j ++) {
+				items[j].points[i] = items[j].points[i] + items[j - 1].points[i];
+			}
+		}
+
+		return this;
+	}
+
+
+	//分析点数据
+	analyseItems(item, index: number) {
+		let circleInfo = [];
+
+		//遍历获取原点信息
+		item.points.map((p, index) => {
+			let cyc = this.coordinateSystem.calc(0, p);
+			circleInfo.push({
+				y: cyc.y,
+				cy: p
+			});
+		});
+
+		return circleInfo;
+	}
+
+	//绘制网格
+	protected paintGrid() {
+		
+		this.g.save();
+		this.config.grid && this.drawGridY();
+		this.g.restore();
+
+		return this;
+	}
+
+	//绘制坐标轴
+	protected drawCoordinateSystem() {
+		this.coordinateSystem
+			.rightAngle()
+			.setYIntervalPoint()
+			.baseLineX();
+
+		return this;
+	}
+
+	//绘制x轴元素
+	private drawXaxis() {
+		const interval = this.coordinateSystem.lX/(this.config.length + 1);
+
+		this.config.xAxis.map((gapName, index) => {
+			let x = this.coordinateSystem.oX + (index + 1)*interval;
+
+			new DrawLine(this.g, x, this.coordinateSystem.oY)
+				.end(x, this.coordinateSystem.oY + 5);
+
+			this.data.map(item => {
+				item.ele[index].x = x;
+			});
+		});
+
+		return this;
+	}
+
+	renderResult(data) {
+		data.map(cir => {
+			cir.ele.map(c => {
+				new DrawArc(this.g, this.defaultRadius, 360, false).render(c.x, c.y, cir.color);
+			});
+		});
+	
+		return this;
+    }
+
+}
+
+
+
+
+
+
+
+
+
 /*
 * @PieChart: 饼状图表
 */
@@ -1356,6 +1575,7 @@ class PieChart implements chartModule{
 
 	protected g = null;
 	protected config = null;
+	protected items = [];
 
 	protected itemList = [];
 
@@ -1383,12 +1603,22 @@ class PieChart implements chartModule{
 
 		this.bindMouseEvent();
 
-		this.render(null);
+		this.indexItem(this.config.items).render(null);
 	}
 
-	//计算数据量总和
-	private sum(items) {
-		return items.map(item => item.data).reduce((prev, cur, index, arr) => prev + cur);
+	//对项目进行排序
+	protected sortItem(items) {
+		items.sort((item1, item2) => item1.data - item2.data);
+		return this;
+	}
+
+	//为每一个项目标上索引
+	protected indexItem(items) {
+		items.map((item, index) => {
+			item.index = index;
+		});
+
+		return this;
 	}
 
 	//数据分析函数，对用户输入的数据集进行分析运算
@@ -1519,20 +1749,23 @@ class PieChart implements chartModule{
 	};
 
 	render(itemList: string[]) {
-		let items = [];
+		this.items = [];
+		this.data = [];
 		
 		if(itemList) {
 			itemList.map(label => {
 				this.config.items.map(item => {
 					if(item.label === label) {
-						items.push(item);
+						this.items.splice(item.index, 0, item);
 					}
 				});
 			});
 		}
 		else {
-			items = this.config.items;
+			this.items = this.config.items;
 		}
+
+		this.sortItem(this.items);
 
 		/*
 		* @DrawCoordinateSystem: 建立坐标系
@@ -1545,12 +1778,10 @@ class PieChart implements chartModule{
 		this.itemList = itemList;
 
 		//计算总和
-		this.total = this.sum(items);
-
-		this.data = [];	
+		this.total = _SUM(this.items.map(item => item.data));
 		
 		//遍历items分析数据
-		items.map((item, index) => {
+		this.items.map((item, index) => {
 			this.data.push({
 				ele: this.analyseItems(item, index),
 				color: item.color,
@@ -1844,6 +2075,14 @@ ChartUp.extend({
 	chartClass: PillarChart
 });
 
+
+//扩展: 面积图表
+ChartUp.extend({
+	chartType: 'AreaChart',
+	chartClass: AreaChart
+});
+
+
 //扩展: 饼状图表
 ChartUp.extend({
 	chartType: 'PieChart',
@@ -1867,13 +2106,15 @@ ChartUp.extend({
 
 
 
+
+
 ChartUp.LineChart('#con1', {
 	title: 'Mychart',
 	interval: [5, 5],
     items: [
 		{
 			label: 'income',
-			points: [[-4, -2], [0, 0], [3, 6], [8, 7], [12, 14], [20, 31], [21, 23], [25, 30], [28, 33]],
+			points: Array.from(new Array(10 + Math.ceil(Math.random()*5)), x => [Math.ceil(Math.random()*40), Math.ceil(Math.random()*40)]),
 			color: '#009688'
 		},	
 		{
@@ -1922,63 +2163,87 @@ ChartUp.PillarChart('#con3', {
 	trendLine: true,
     items: [{
 		label: 'A',
-		height: 20,
+		height: Math.ceil(Math.random()*100),
 		color: '#03A9F4'
 	}, 
 	{
 		label: 'B',
-		height: -25,
+		height: Math.ceil(Math.random()*100),
 		color: '#7B1FA2'
 	},
 	{
 		label: 'C',
-		height: 37,
+		height: Math.ceil(Math.random()*100),
 		color: '#8BC34A'
 	},
 	{
 		label: 'D',
-		height: 50,
+		height: Math.ceil(Math.random()*100),
 		color: '#FF4081'
 	},
 	{
 		label: 'E',
-		height: 100,
+		height: Math.ceil(Math.random()*100),
 		color: '#FF5722'
 	},
 	{
 		label: 'F',
-		height: 88,
+		height: Math.ceil(Math.random()*100),
 		color: '#5c6bc0'
 	}]
 });
 
 
-ChartUp.PieChart('#con4', {
+ChartUp.AreaChart('#con4', {
+	titlt: 'Area',
+	interval: [30, 20],
+	xAxis: Array.from(new Array(new Date().getFullYear() - 2010), (y, i) => new Date().getFullYear() - i).reverse(),
+	items: [
+		{
+			label: 'C',
+			color: '#673AB7',
+			points: Array.from(new Array(new Date().getFullYear() - 2010), x => Math.ceil(Math.random()*30)),
+		},
+		{
+			label: 'C++',
+			color: '#FFC107',
+			points: Array.from(new Array(new Date().getFullYear() - 2010), x => Math.ceil(Math.random()*30))
+		},
+		{
+			label: 'java',
+			color: '#CDDC39',
+			points: Array.from(new Array(new Date().getFullYear() - 2010), x => Math.ceil(Math.random()*30))
+		}
+	]
+});
+
+
+ChartUp.PieChart('#con5', {
 	title: 'PieChart',
 	radius: 200,
     items: [{
 		label: 'A',
-		data: 25,
+		data: Math.ceil(Math.random()*100),
 		color: '#ff5722'
 	},
 	{
 		label: 'B',
-		data: 18,
+		data: Math.ceil(Math.random()*100),
 		color: '#1b5e20'
 	},
 	{
 		label: 'C',
-		data: 20,
+		data: Math.ceil(Math.random()*100),
 		color: '#1565c0'
 	},
 	{
 		label: 'D',
-		data: 40,
+		data: Math.ceil(Math.random()*100),
 		color: '#ffa000'
 	},
 	{
 		label: 'E',
-		data: 15,
+		data: Math.ceil(Math.random()*100),
 		color: '#C2185B'
 	},
 	{
@@ -1989,43 +2254,41 @@ ChartUp.PieChart('#con4', {
 });
 
 
-ChartUp.AnnularChart('#con5', {
+ChartUp.AnnularChart('#con6', {
 	title: 'AnnularChart',
 	radius: 200,
 	width: 80,
     items: [{
 		label: 'A',
-		data: 25,
+		data: Math.ceil(Math.random()*100),
 		color: '#ff5722'
 	},
 	{
 		label: 'B',
-		data: 18,
+		data: Math.ceil(Math.random()*100),
 		color: '#1b5e20'
 	},
 	{
 		label: 'C',
-		data: 20,
+		data: Math.ceil(Math.random()*100),
 		color: '#1565c0'
 	},
 	{
 		label: 'D',
-		data: 40,
+		data: Math.ceil(Math.random()*100),
 		color: '#ffa000'
 	},
 	{
 		label: 'Esss',
-		data: 10,
+		data: Math.ceil(Math.random()*100),
 		color: '#e6ee9c'
 	},
 	{
 		label: '看电影',
-		data: 28,
+		data: Math.ceil(Math.random()*100),
 		color: '#7986cb'
 	}]
 });
-
-
 
 
 
