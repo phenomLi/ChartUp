@@ -180,16 +180,17 @@ class DrawLine {
 		return this;
 	}
 
-    end(x: number, y: number, isClose: boolean = false, color?: string) {
+    end(x: number, y: number, isFill: boolean = false, color?: string) {
 
 		if(color) {
 			this.reLine(color);
 		};
 
+		isFill && (this.g.fillStyle = color);
+
 		this.g.lineTo(x, y);
 		this.currentPoint = [x, y];
-        isClose && this.g.closePath();
-		this.g.stroke();
+        isFill? this.g.fill(): this.g.stroke();
 
 		return this;
     }
@@ -296,29 +297,6 @@ class DrawRect {
 	}
 }
 
-
-/*
-* @DrawTitle: 描绘图表标题
-*/
-
-class DrawTitle {
-
-	private g = null;
-	private text: string | number;
-
-	constructor(g, text: string | number) {
-		this.g = g;
-		this.g.font = '24px 微软雅黑';
-		this.g.fillStyle = _Gconfig.defaultColor;
-
-		this.text = text;
-	}
-
-	render(x: number, y: number, color?: string) {
-		color && (this.g.fillStyle = color);
-		this.g.fillText(this.text, x, y);
-	}
-}
 
 
 
@@ -543,7 +521,18 @@ class DrawCoordinateSystem {
 			return _MAX(pointsArr);
 		}
 		else if(this.config.chartType === 'AreaChart') {
-			return _MAX(items[this.items.length - 1].points);
+			let temp: number[] = [],
+				sum = 0;
+
+			for(let i = 0; i < this.config.length; i ++) {
+				for(let j = 0; j < this.items.length; j ++) {
+					sum = this.items[j].points[i] + sum;
+				}
+				temp.push(sum);
+				sum = 0;
+			}
+
+			return _MAX(temp);
 		}
 		else {
 			//判断items是否为数组
@@ -667,7 +656,7 @@ class LineChart implements chartModule {
 		this.bindMouseEvent();
 
 		//渲染总体
-		this.indexItem(this.config.items).render(null);
+		this.indexItem(this.config.items);
     }
 
 	//为每一个项目标上索引
@@ -689,7 +678,7 @@ class LineChart implements chartModule {
 			itemList.map(label => {
 				this.config.items.map(item => {
 					if(item.label === label) {
-						this.items.splice(item.index, 0, item);
+						this.items.push(item);
 					}
 				});
 			});
@@ -697,6 +686,8 @@ class LineChart implements chartModule {
 		else {
 			this.items = this.config.items;
 		}
+
+		this.items.sort((i1, i2) => i1.index - i2.index);
 
 		/*
 		* @DrawCoordinateSystem: 建立坐标系
@@ -1388,6 +1379,8 @@ class PillarChart extends LineChart {
 
 class AreaChart extends LineChart {
 
+	private length: number = 0;
+
 	constructor(Graphics, config) {
 		super(Graphics, config);
 
@@ -1395,57 +1388,11 @@ class AreaChart extends LineChart {
 			console.warn("'xAxis' option is required.");
 			return null;
 		}
-	}
 
-	//入口
-	render(itemList: string[]) {
+		this.length = this.config.xAxis.length;
+		this.config.length = this.length;
 		
-		this.items = [];
-		this.data = [];	
-
-		this.config.length = this.config.xAxis.length;
-
 		this.checkDataIsComplete(this.config.items);
-
-		if(itemList) {
-			itemList.map(label => {
-				this.config.items.map(item => {
-					if(item.label === label) {
-						this.items.splice(item.index, 0, item);
-					}
-				});
-			});
-		}
-		else {
-			this.items = this.config.items;
-		}
-
-		this.addData(this.items);
-
-		/*
-		* @DrawCoordinateSystem: 建立坐标系
-		* 对象返回坐标系的信息，包括
-		* 坐标真实原点
-		* 坐标间隔
-		* 坐标真实间隔
-		*/
-		this.g.clearRect(0, 0, this.config.canvasWidth, this.config.canvasHeight);
-		this.coordinateSystem = new DrawCoordinateSystem(this.g, this.config, this.items);
-		this.itemList = itemList;
-
-		//遍历items分析数据
-		this.items.map((item, index) => {
-			this.data.push({
-				ele: this.analyseItems(item, index),
-				color: item.color,
-				label: item.label
-			});
-		});
-
-		//第一次渲染
-		this.reRender(0, 0);
-
-		return this;
 	}
 		
 
@@ -1470,7 +1417,7 @@ class AreaChart extends LineChart {
 		let diff: number = 0;
 
 		items.map(item => {
-			diff = this.config.length - item.points.length;
+			diff = this.length - item.points.length;
 
 			if(diff > 0) {
 				while(diff --) {
@@ -1482,28 +1429,21 @@ class AreaChart extends LineChart {
 		return this;
 	}
 
-	//处理数据：将数据相加
-	private addData(items) {
-		for(let i = 0; i < this.config.length; i ++) {
-			for(let j = 1; j < items.length; j ++) {
-				items[j].points[i] = items[j].points[i] + items[j - 1].points[i];
-			}
-		}
-
-		return this;
-	}
-
 
 	//分析点数据
 	analyseItems(item, index: number) {
+
 		let circleInfo = [];
 
 		//遍历获取原点信息
-		item.points.map((p, index) => {
-			let cyc = this.coordinateSystem.calc(0, p);
+		item.points.map((p, i) => {
+			let pi = this.data.length > 0? this.data[index - 1].ele[i].cy + p: p,
+				cyc = this.coordinateSystem.calc(0, pi);
+
 			circleInfo.push({
 				y: cyc.y,
-				cy: p
+				cy: pi,
+				count: p
 			});
 		});
 
@@ -1532,10 +1472,13 @@ class AreaChart extends LineChart {
 
 	//绘制x轴元素
 	private drawXaxis() {
-		const interval = this.coordinateSystem.lX/(this.config.length + 1);
+		const interval = this.coordinateSystem.lX/(this.length - 1);
+
+		this.g.save();
+		this.g.textAlign = 'center';
 
 		this.config.xAxis.map((gapName, index) => {
-			let x = this.coordinateSystem.oX + (index + 1)*interval;
+			let x = this.coordinateSystem.oX + index*interval;
 
 			new DrawLine(this.g, x, this.coordinateSystem.oY)
 				.end(x, this.coordinateSystem.oY + 5);
@@ -1543,18 +1486,75 @@ class AreaChart extends LineChart {
 			this.data.map(item => {
 				item.ele[index].x = x;
 			});
+
+			this.g.fillText(gapName, x, this.coordinateSystem.oY + 25);
 		});
+
+		this.g.restore();
 
 		return this;
 	}
 
 	renderResult(data) {
-		data.map(cir => {
-			cir.ele.map(c => {
-				new DrawArc(this.g, this.defaultRadius, 360, false).render(c.x, c.y, cir.color);
+
+		this.g.save();
+
+		for(let j = 0; j < data.length ;j ++) {
+			let line = null,
+				cur = data[j],
+				prev = j > 0? data[j - 1]: cur;
+
+			for(let i = 0; i < cur.ele.length; i ++) {
+				let c = cur.ele[i],
+					p = prev.ele[i];
+
+				this.g.fillStyle = cur.color;
+				this.g.globalAlpha = 0.5;
+				
+				if(j === 0) {
+
+					if(i === 0) {
+						line = new DrawLine(this.g, this.coordinateSystem.oX, this.coordinateSystem.oY, prev.color)
+							.next(p.x, p.y);
+					}
+					else if(i === prev.ele.length - 1) {
+						line = line.next(p.x, p.y)
+							.end(this.coordinateSystem.rxEdge, this.coordinateSystem.oY, true);
+					}
+					else {
+						line = line.next(p.x, p.y);
+					}
+				}
+				else {
+					if(i === 0) {
+						line = new DrawLine(this.g, p.x, p.y, cur.color)
+							.next(c.x, c.y);
+					}
+					else if(i === cur.ele.length - 1) {
+						line = line.next(c.x, c.y);
+
+						for(let k = prev.ele.length - 1; k >=0; k --) {
+							line = line.next(prev.ele[k].x, prev.ele[k].y);
+						}
+
+						line.end(cur.ele[0].x, cur.ele[0].y, true);
+					}
+					else {
+						line = line.next(c.x, c.y);
+					}
+				}
+			}
+		}
+
+		this.g.restore();
+
+		//绘制圆环
+		data.map(c => {
+			c.ele.map(p => {
+				new DrawArc(this.g, 4.5, 360).render(p.x, p.y, c.color);
 			});
 		});
-	
+		
 		return this;
     }
 
@@ -1603,7 +1603,7 @@ class PieChart implements chartModule{
 
 		this.bindMouseEvent();
 
-		this.indexItem(this.config.items).render(null);
+		this.indexItem(this.config.items);
 	}
 
 	//对项目进行排序
@@ -2047,7 +2047,7 @@ class ChartPrototype implements ChartAPI {
 			config['chartType'] = chartConfig.chartType;
 
 			//保存图表实例
-			config['chartIntance'] = new chartConfig.chartClass(Graphics, config);
+			config['chartIntance'] = new chartConfig.chartClass(Graphics, config).render(null);
 		}
 		
 	}
@@ -2212,7 +2212,7 @@ ChartUp.AreaChart('#con4', {
 		{
 			label: 'java',
 			color: '#CDDC39',
-			points: Array.from(new Array(new Date().getFullYear() - 2010), x => Math.ceil(Math.random()*30))
+			points: [40, 20, 33, 64, 15]
 		}
 	]
 });
