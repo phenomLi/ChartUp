@@ -3,7 +3,7 @@ const webpack = require('webpack');
 module.exports = {
     entry: "./ChartUp.ts",
     output:{
-        filename: "./ChartUp.js"
+        filename: "./ChartUp-dev-es2015.js"
     },
     module: {
         rules:[{

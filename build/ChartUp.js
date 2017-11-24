@@ -1,73 +1,4 @@
-/******/ (function(modules) { // webpackBootstrap
-/******/ 	// The module cache
-/******/ 	var installedModules = {};
-/******/
-/******/ 	// The require function
-/******/ 	function __webpack_require__(moduleId) {
-/******/
-/******/ 		// Check if module is in cache
-/******/ 		if(installedModules[moduleId]) {
-/******/ 			return installedModules[moduleId].exports;
-/******/ 		}
-/******/ 		// Create a new module (and put it into the cache)
-/******/ 		var module = installedModules[moduleId] = {
-/******/ 			i: moduleId,
-/******/ 			l: false,
-/******/ 			exports: {}
-/******/ 		};
-/******/
-/******/ 		// Execute the module function
-/******/ 		modules[moduleId].call(module.exports, module, module.exports, __webpack_require__);
-/******/
-/******/ 		// Flag the module as loaded
-/******/ 		module.l = true;
-/******/
-/******/ 		// Return the exports of the module
-/******/ 		return module.exports;
-/******/ 	}
-/******/
-/******/
-/******/ 	// expose the modules object (__webpack_modules__)
-/******/ 	__webpack_require__.m = modules;
-/******/
-/******/ 	// expose the module cache
-/******/ 	__webpack_require__.c = installedModules;
-/******/
-/******/ 	// define getter function for harmony exports
-/******/ 	__webpack_require__.d = function(exports, name, getter) {
-/******/ 		if(!__webpack_require__.o(exports, name)) {
-/******/ 			Object.defineProperty(exports, name, {
-/******/ 				configurable: false,
-/******/ 				enumerable: true,
-/******/ 				get: getter
-/******/ 			});
-/******/ 		}
-/******/ 	};
-/******/
-/******/ 	// getDefaultExport function for compatibility with non-harmony modules
-/******/ 	__webpack_require__.n = function(module) {
-/******/ 		var getter = module && module.__esModule ?
-/******/ 			function getDefault() { return module['default']; } :
-/******/ 			function getModuleExports() { return module; };
-/******/ 		__webpack_require__.d(getter, 'a', getter);
-/******/ 		return getter;
-/******/ 	};
-/******/
-/******/ 	// Object.prototype.hasOwnProperty.call
-/******/ 	__webpack_require__.o = function(object, property) { return Object.prototype.hasOwnProperty.call(object, property); };
-/******/
-/******/ 	// __webpack_public_path__
-/******/ 	__webpack_require__.p = "";
-/******/
-/******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 0);
-/******/ })
-/************************************************************************/
-/******/ ([
-/* 0 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
+'use strict';
 
 /*
 * - ChartUp -
@@ -75,41 +6,52 @@
 * A javascript library for building visual data. From phenom.
 * start on 11.9.2017
 */
-var __extends = (this && this.__extends) || (function () {
-    var extendStatics = Object.setPrototypeOf ||
-        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+var __extends = undefined && undefined.__extends || function () {
+    var extendStatics = Object.setPrototypeOf || { __proto__: [] } instanceof Array && function (d, b) {
+        d.__proto__ = b;
+    } || function (d, b) {
+        for (var p in b) {
+            if (b.hasOwnProperty(p)) d[p] = b[p];
+        }
+    };
     return function (d, b) {
         extendStatics(d, b);
-        function __() { this.constructor = d; }
+        function __() {
+            this.constructor = d;
+        }
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
-})();
-exports.__esModule = true;
+}();
 /*
 * 暴露Chart到全局
 */
-var ChartUp = (function (window) {
+var ChartUp = function (window) {
     //全局设置
     var _Gconfig = {
+        //所有图表默认颜色
         defaultColor: '#000',
-        edge: [20, 20]
+        //所有直角坐标图表默认边界
+        edge: [20, 20],
+        //所有图表默认坐标间隔
+        interval: 10
     };
     //角度转弧度制
-    var _degree2Radian = function (degree) {
+    var _degree2Radian = function _degree2Radian(degree) {
         return Math.PI * (degree / 180);
     };
     //找出数组中的最大值
-    var _MAX = function (arr) {
+    var _MAX = function _MAX(arr) {
         return Math.max.apply(Math, arr);
     };
     //找出数组中的最小值
-    var _MIN = function (arr) {
+    var _MIN = function _MIN(arr) {
         return Math.min.apply(Math, arr);
     };
     //数组求和
-    var _SUM = function (arr) {
-        return arr.length ? arr.reduce(function (prev, cur, index, arr) { return prev + cur; }) : 0;
+    var _SUM = function _SUM(arr) {
+        return arr.length ? arr.reduce(function (prev, cur, index, arr) {
+            return prev + cur;
+        }) : 0;
     };
     /*--------------------工具方法---------------------*/
     /*
@@ -119,7 +61,7 @@ var ChartUp = (function (window) {
     * end: 最后一个坐标点
     * paint: 绘制形状
     */
-    var DrawLine = /** @class */ (function () {
+    var DrawLine = /** @class */function () {
         function DrawLine(g, x, y, color) {
             this.g = null;
             this.currentPoint = [];
@@ -160,7 +102,9 @@ var ChartUp = (function (window) {
             return this;
         };
         DrawLine.prototype.end = function (x, y, isFill, color) {
-            if (isFill === void 0) { isFill = false; }
+            if (isFill === void 0) {
+                isFill = false;
+            }
             if (color) {
                 this.reLine(color);
             }
@@ -172,14 +116,16 @@ var ChartUp = (function (window) {
             return this;
         };
         return DrawLine;
-    }());
+    }();
     /*
     * @DrawArc: 对canvas圆弧api的一个封装
     * render: 确定图形坐标，颜色，是否填充
     */
-    var DrawArc = /** @class */ (function () {
+    var DrawArc = /** @class */function () {
         function DrawArc(g, radius, angle, soild) {
-            if (soild === void 0) { soild = true; }
+            if (soild === void 0) {
+                soild = true;
+            }
             this.g = null;
             this.radius = 0;
             this.startAngle = 0;
@@ -205,28 +151,26 @@ var ChartUp = (function (window) {
             this.x = x;
             this.y = y;
             if (color) {
-                this.isSoild ?
-                    this.g.fillStyle = color :
-                    this.g.strokeStyle = color;
+                this.isSoild ? this.g.fillStyle = color : this.g.strokeStyle = color;
             }
             this.g.beginPath();
             !this.isDrawCircle && this.g.moveTo(this.x, this.y);
             this.g.arc(this.x, this.y, this.radius, this.startAngle, this.endAngle);
             this.g.closePath();
-            this.isSoild ?
-                this.g.fill() :
-                this.g.stroke();
+            this.isSoild ? this.g.fill() : this.g.stroke();
             return this;
         };
         return DrawArc;
-    }());
+    }();
     /*
     * @DrawArc: 对canvas矩形api的一个封装
     * render: 确定矩形坐标，颜色，是否填充
     */
-    var DrawRect = /** @class */ (function () {
+    var DrawRect = /** @class */function () {
         function DrawRect(g, width, height, soild) {
-            if (soild === void 0) { soild = true; }
+            if (soild === void 0) {
+                soild = true;
+            }
             this.g = null;
             this.width = 0;
             this.height = 0;
@@ -238,18 +182,14 @@ var ChartUp = (function (window) {
         }
         DrawRect.prototype.render = function (x, y, color) {
             if (color) {
-                this.isSoild ?
-                    this.g.fillStyle = color :
-                    this.g.strokeStyle = color;
+                this.isSoild ? this.g.fillStyle = color : this.g.strokeStyle = color;
             }
             this.g.beginPath();
             this.g.rect(x, y, this.width, this.height);
-            this.isSoild ?
-                this.g.fill() :
-                this.g.stroke();
+            this.isSoild ? this.g.fill() : this.g.stroke();
         };
         return DrawRect;
-    }());
+    }();
     /*
     * @DrawCoordinateSystem: 绘制直角坐标系
     * rightAngle: 绘制出垂直相交的x，y坐标
@@ -258,7 +198,7 @@ var ChartUp = (function (window) {
     * calculator: 将定义的坐标点转换为该坐标系的真实坐标点
     * render: 渲染整体
     */
-    var DrawCoordinateSystem = /** @class */ (function () {
+    var DrawCoordinateSystem = /** @class */function () {
         function DrawCoordinateSystem(g, config, items) {
             this.g = null;
             this.config = null;
@@ -299,16 +239,16 @@ var ChartUp = (function (window) {
             this.lY = this.oY - this.margin - 20;
             this.rxEdge = this.oX + this.lX;
             this.ryEdge = this.oY - this.lY;
-            this.xInterval = this.config.interval[0] ? this.config.interval[0] : 1,
-                this.yInterval = this.config.interval[1] ? this.config.interval[1] : this.config.interval;
-            var xMax = this.getMax(this.items, 'x'), yMax = this.getMax(this.items, 'y'), xMin = Math.ceil(this.getMin(this.items, 'x')), yMin = Math.ceil(this.getMin(this.items, 'y'));
-            this.xOrigin = xMin,
-                this.yOrigin = yMin;
-            var xLength = xMax - this.xOrigin, yLength = yMax - this.yOrigin;
-            this.xCount = Math.floor(xLength / this.xInterval) + 1,
-                this.yCount = Math.floor(yLength / this.yInterval) + 1;
-            this.xEdge = this.xInterval * this.xCount + this.xOrigin,
-                this.yEdge = this.yInterval * this.yCount + this.yOrigin;
+            this.xInterval = this.config.interval[0] ? this.config.interval[0] : 1, this.yInterval = this.config.interval[1] ? this.config.interval[1] : this.config.interval;
+            var xMax = this.getMax(this.items, 'x'),
+                yMax = this.getMax(this.items, 'y'),
+                xMin = Math.ceil(this.getMin(this.items, 'x')),
+                yMin = Math.ceil(this.getMin(this.items, 'y'));
+            this.xOrigin = xMin, this.yOrigin = yMin;
+            var xLength = xMax - this.xOrigin,
+                yLength = yMax - this.yOrigin;
+            this.xCount = Math.floor(xLength / this.xInterval) + 1, this.yCount = Math.floor(yLength / this.yInterval) + 1;
+            this.xEdge = this.xInterval * this.xCount + this.xOrigin, this.yEdge = this.yInterval * this.yCount + this.yOrigin;
             for (var i = 1; i <= this.xCount; i++) {
                 //计算每一个断点到原点距离
                 var index = i * (this.lX / this.xCount);
@@ -326,30 +266,28 @@ var ChartUp = (function (window) {
         }
         //绘制x=0轴
         DrawCoordinateSystem.prototype.baseLineX = function () {
-            var y = this.calc(0, 0)['y'], start = this.calc(this.xOrigin, 0)['x'];
+            var y = this.calc(0, 0)['y'],
+                start = this.calc(this.xOrigin, 0)['x'];
             this.g.save();
             if (this.yOrigin < 0) {
-                new DrawLine(this.g, start, y, '#666')
-                    .end(this.rxEdge, y);
+                new DrawLine(this.g, start, y, '#666').end(this.rxEdge, y);
             }
             this.g.restore();
             return this;
         };
         //绘制y=0轴
         DrawCoordinateSystem.prototype.baseLineY = function () {
-            var x = this.calc(0, 0)['x'], start = this.calc(0, this.yOrigin)['y'];
+            var x = this.calc(0, 0)['x'],
+                start = this.calc(0, this.yOrigin)['y'];
             this.g.save();
             if (this.xOrigin < 0) {
-                new DrawLine(this.g, x, start, '#666')
-                    .end(x, this.ryEdge);
+                new DrawLine(this.g, x, start, '#666').end(x, this.ryEdge);
             }
             this.g.restore();
             return this;
         };
         DrawCoordinateSystem.prototype.rightAngle = function () {
-            new DrawLine(this.g, this.margin, this.margin)
-                .next(this.oX, this.oY)
-                .end(this.config.canvasWidth - this.margin, this.oY);
+            new DrawLine(this.g, this.margin, this.margin).next(this.oX, this.oY).end(this.config.canvasWidth - this.margin, this.oY);
             return this;
         };
         DrawCoordinateSystem.prototype.setXIntervalPoint = function () {
@@ -389,8 +327,8 @@ var ChartUp = (function (window) {
         //将定义的坐标点转换为该坐标系的真实坐标点
         DrawCoordinateSystem.prototype.calc = function (x, y) {
             return {
-                x: this.oX + ((x - this.xOrigin) * this.lX) / (this.xEdge - this.xOrigin),
-                y: this.oY - ((y - this.yOrigin) * this.lY) / (this.yEdge - this.yOrigin)
+                x: this.oX + (x - this.xOrigin) * this.lX / (this.xEdge - this.xOrigin),
+                y: this.oY - (y - this.yOrigin) * this.lY / (this.yEdge - this.yOrigin)
             };
         };
         //获取坐标点的最大值
@@ -404,14 +342,15 @@ var ChartUp = (function (window) {
                 return _MAX(items.map(function (item) {
                     if (typeof item.points === 'function') {
                         return _Gconfig.edge[flag];
-                    }
-                    else {
-                        return _MAX(item.points.map(function (p) { return p[flag]; }));
+                    } else {
+                        return _MAX(item.points.map(function (p) {
+                            return p[flag];
+                        }));
                     }
                 }));
-            }
-            else if (this.config.chartType === 'AreaChart') {
-                var temp = [], sum = 0;
+            } else if (this.config.chartType === 'AreaChart') {
+                var temp = [],
+                    sum = 0;
                 for (var i = 0; i < this.config.length; i++) {
                     for (var j = 0; j < this.items.length; j++) {
                         sum = this.items[j].value[i] + sum;
@@ -420,9 +359,10 @@ var ChartUp = (function (window) {
                     sum = 0;
                 }
                 return _MAX(temp);
-            }
-            else {
-                return _MAX(this.items.map(function (item) { return _MAX(item.value); }));
+            } else {
+                return _MAX(this.items.map(function (item) {
+                    return _MAX(item.value);
+                }));
             }
         };
         //获取坐标点的最小值
@@ -437,27 +377,167 @@ var ChartUp = (function (window) {
                 return _MIN(items.map(function (item) {
                     if (typeof item.points === 'function') {
                         return 0;
-                    }
-                    else {
-                        return _MIN(item.points.map(function (p) { return p[flag]; }));
+                    } else {
+                        return _MIN(item.points.map(function (p) {
+                            return p[flag];
+                        }));
                     }
                 }));
-            }
-            else if (this.config.chartType === 'AreaChart') {
+            } else if (this.config.chartType === 'AreaChart') {
                 return _MIN(items[0].value);
-            }
-            else {
-                var min = _MIN(this.items.map(function (item) { return _MIN(item.value); }));
+            } else {
+                var min = _MIN(this.items.map(function (item) {
+                    return _MIN(item.value);
+                }));
                 return min > 0 ? 0 : min - Math.abs(min);
             }
         };
         return DrawCoordinateSystem;
-    }());
+    }();
+    var DrawRadarSystem = /** @class */function () {
+        function DrawRadarSystem(g, config, items) {
+            this.g = null;
+            this.config = null;
+            this.items = null;
+            this.oX = 0;
+            this.oY = 0;
+            this.angleList = [];
+            //雷达坐标的虚拟值
+            this.edge = 0;
+            this.max = 0;
+            this.count = 0;
+            this.g = g;
+            this.config = config;
+            this.items = items;
+            this.oX = this.config.centerX;
+            this.oY = this.config.centerY;
+            this.max = this.getMax(this.items);
+            this.count = Math.floor(this.max / this.config.interval) + 1;
+            this.edge = this.count * this.config.interval;
+        }
+        //获取每一个角的坐标值
+        DrawRadarSystem.prototype.getAngleValue = function (index, radius) {
+            var _this = this;
+            var angleList = [],
+                curAngle = 0,
+                angle = 2 * Math.PI / index.length,
+                pi2 = Math.PI / 2;
+            index.map(function (t, i) {
+                curAngle = i * angle;
+                if (i === 0) {
+                    angleList.push({
+                        x: _this.oX,
+                        y: _this.oY + radius
+                    });
+                } else {
+                    angleList.push({
+                        x: _this.oX + radius * Math.cos(curAngle + pi2),
+                        y: _this.oY + radius * Math.sin(curAngle + pi2)
+                    });
+                }
+            });
+            return angleList;
+        };
+        //绘制多边形形状
+        DrawRadarSystem.prototype.drawPolygon = function () {
+            var angleList = [],
+                radius = 0,
+                line = null;
+            for (var j = 0; j < this.count; j++) {
+                radius = (this.edge - j * this.config.interval) * this.config.defaultRadius / this.edge;
+                angleList = this.getAngleValue(this.config.index, radius);
+                for (var i = 0; i < angleList.length; i++) {
+                    if (i === angleList.length - 1) {
+                        line = line.next(angleList[i].x, angleList[i].y).end(angleList[0].x, angleList[0].y);
+                    } else if (i === 0) {
+                        line = new DrawLine(this.g, angleList[i].x, angleList[i].y, '#ddd');
+                    } else {
+                        line = line.next(angleList[i].x, angleList[i].y);
+                    }
+                }
+                if (j === 0) {
+                    this.angleList = angleList;
+                }
+            }
+            return this;
+        };
+        //填充多边形条纹颜色
+        DrawRadarSystem.prototype.fillPolygon = function () {
+            var angleList = [],
+                radius = 0,
+                line = null;
+            this.g.save();
+            for (var j = 0; j < this.count; j++) {
+                radius = (this.edge - j * this.config.interval) * this.config.defaultRadius / this.edge;
+                angleList = this.getAngleValue(this.config.index, radius);
+                this.g.fillStyle = j % 2 ? '#eee' : '#fff';
+                for (var i = 0; i < angleList.length; i++) {
+                    if (i === angleList.length - 1) {
+                        line = line.next(angleList[i].x, angleList[i].y).end(angleList[0].x, angleList[0].y, j > 0 ? true : false);
+                    } else if (i === 0) {
+                        line = new DrawLine(this.g, angleList[i].x, angleList[i].y, '#ddd');
+                    } else {
+                        line = line.next(angleList[i].x, angleList[i].y);
+                    }
+                }
+            }
+            this.g.restore();
+            return this;
+        };
+        //绘制放射线
+        DrawRadarSystem.prototype.drawRay = function () {
+            var _this = this;
+            this.angleList.map(function (a) {
+                new DrawLine(_this.g, _this.oX, _this.oY, '#ddd').end(a.x, a.y);
+            });
+            return this;
+        };
+        //绘制指标文字
+        DrawRadarSystem.prototype.drawText = function () {
+            var _this = this;
+            var margin = 35;
+            this.g.save();
+            this.g.textAlign = 'center';
+            this.angleList.map(function (a, i) {
+                var x = a.x,
+                    y = a.y;
+                if (a.x > _this.oX) {
+                    x = a.x + margin;
+                }
+                if (a.x < _this.oX) {
+                    x = a.x - margin;
+                }
+                if (a.y > _this.oY) {
+                    y = a.y + margin;
+                }
+                if (a.y < _this.oY) {
+                    y = a.y - margin;
+                }
+                _this.g.fillText(_this.config.index[i], x, y);
+            });
+            this.g.restore();
+            return this;
+        };
+        DrawRadarSystem.prototype.getMax = function (items) {
+            if (items.length === 0) {
+                return _Gconfig.edge[0];
+            }
+            return _MAX(items.map(function (item) {
+                return _MAX(item.value);
+            }));
+        };
+        DrawRadarSystem.prototype.calc = function (x, y, index) {
+            return {};
+        };
+        DrawRadarSystem.prototype.render = function () {
+            this.fillPolygon().drawPolygon().drawRay().drawText();
+        };
+        return DrawRadarSystem;
+    }();
     /*
     * @Animate: canvas动绘制的一个封装
     */
-    var _Animate = function () {
-    };
+    var _Animate = function _Animate() {};
     /*--------------------工具方法 END-------------------------*/
     /*------------------------------图表类------------------------------------ */
     /*
@@ -472,7 +552,7 @@ var ChartUp = (function (window) {
     * drawGrid: 网格
     * renderResult: 统计结果
     */
-    var BaseChart = /** @class */ (function () {
+    var BaseChart = /** @class */function () {
         function BaseChart(Graphics, config) {
             this.g = null;
             this.config = null;
@@ -482,6 +562,8 @@ var ChartUp = (function (window) {
             this.itemList = [];
             //默认半径
             this.defaultRadius = 3;
+            //默认间隔
+            this.defaultInterval = 10;
             this.coordinateSystem = null;
             this.items = [];
             this.g = Graphics;
@@ -528,11 +610,12 @@ var ChartUp = (function (window) {
                         }
                     });
                 });
-            }
-            else {
+            } else {
                 this.items = this.config.items;
             }
-            this.items.sort(function (i1, i2) { return i1.index - i2.index; });
+            this.items.sort(function (i1, i2) {
+                return i1.index - i2.index;
+            });
             /*
             * @DrawCoordinateSystem: 建立坐标系
             * 对象返回坐标系的信息，包括
@@ -558,13 +641,7 @@ var ChartUp = (function (window) {
         BaseChart.prototype.reRender = function (x, y) {
             this.g.save();
             //绘制坐标轴
-            this
-                .paintGrid()
-                .drawCoordinateSystem()
-                .renderResult(this.data)
-                .paintTargetLineX(x, y)
-                .paintTargetLineY(x, y)
-                .paintTipCase(x, y, this.mouseSelect(this.data, x, y));
+            this.paintGrid().drawCoordinateSystem().renderResult(this.data).paintTargetLineX(x, y).paintTargetLineY(x, y).paintTipCase(x, y, this.mouseSelect(this.data, x, y));
             this.g.restore();
         };
         //绘制网格
@@ -576,31 +653,26 @@ var ChartUp = (function (window) {
         };
         //绘制坐标轴
         BaseChart.prototype.drawCoordinateSystem = function () {
-            this.coordinateSystem
-                .rightAngle()
-                .setXIntervalPoint()
-                .setYIntervalPoint()
-                .baseLineX()
-                .baseLineY();
+            this.coordinateSystem.rightAngle().setXIntervalPoint().setYIntervalPoint().baseLineX().baseLineY();
             return this;
         };
         //绘制纵向网格
         BaseChart.prototype.drawGridX = function () {
-            var xLength = this.coordinateSystem.rxIntervals.length, topBoundary = this.coordinateSystem.ryEdge;
+            var xLength = this.coordinateSystem.rxIntervals.length,
+                topBoundary = this.coordinateSystem.ryEdge;
             //绘制出网格中纵向的线
             for (var i = 0; i < xLength; i++) {
-                new DrawLine(this.g, this.coordinateSystem.rxIntervals[i], this.coordinateSystem.oY, '#eee')
-                    .end(this.coordinateSystem.rxIntervals[i], topBoundary);
+                new DrawLine(this.g, this.coordinateSystem.rxIntervals[i], this.coordinateSystem.oY, '#eee').end(this.coordinateSystem.rxIntervals[i], topBoundary);
             }
             return this;
         };
         //绘制横向网格
         BaseChart.prototype.drawGridY = function () {
-            var yLength = this.coordinateSystem.ryIntervals.length, rightBoundary = this.coordinateSystem.rxEdge;
+            var yLength = this.coordinateSystem.ryIntervals.length,
+                rightBoundary = this.coordinateSystem.rxEdge;
             //绘制出网格中横向的线
             for (var i = 0; i < yLength; i++) {
-                new DrawLine(this.g, this.coordinateSystem.oX, this.coordinateSystem.ryIntervals[i], '#eee')
-                    .end(rightBoundary, this.coordinateSystem.ryIntervals[i]);
+                new DrawLine(this.g, this.coordinateSystem.oX, this.coordinateSystem.ryIntervals[i], '#eee').end(rightBoundary, this.coordinateSystem.ryIntervals[i]);
             }
             return this;
         };
@@ -612,7 +684,8 @@ var ChartUp = (function (window) {
         BaseChart.prototype.bindMouseEvent = function () {
             var _this = this;
             this.config.canvas.addEventListener('mousemove', function (e) {
-                var x = e.clientX - _this.config.canvas.getBoundingClientRect().left, y = e.clientY - _this.config.canvas.getBoundingClientRect().top;
+                var x = e.clientX - _this.config.canvas.getBoundingClientRect().left,
+                    y = e.clientY - _this.config.canvas.getBoundingClientRect().top;
                 _this.g.clearRect(0, 0, _this.config.canvasWidth, _this.config.canvasHeight);
                 _this.reRender(x, y);
             });
@@ -646,13 +719,12 @@ var ChartUp = (function (window) {
         };
         //绘制横向测量线
         BaseChart.prototype.paintTargetLineY = function (x, y) {
-            var vy = this.coordinateSystem.yOrigin + Math.abs((y - this.config.canvasHeight + 45)) * (this.coordinateSystem.yEdge - this.coordinateSystem.yOrigin) / (this.coordinateSystem.lY);
+            var vy = this.coordinateSystem.yOrigin + Math.abs(y - this.config.canvasHeight + 45) * (this.coordinateSystem.yEdge - this.coordinateSystem.yOrigin) / this.coordinateSystem.lY;
             this.g.save();
             this.g.setLineDash([4, 2]);
             if (this.isInChart(x, y)) {
                 if (this.config.measureLine) {
-                    new DrawLine(this.g, this.coordinateSystem.oX, y, 'rgba(0, 0, 0, 0.2)')
-                        .end(this.coordinateSystem.rxEdge, y);
+                    new DrawLine(this.g, this.coordinateSystem.oX, y, 'rgba(0, 0, 0, 0.2)').end(this.coordinateSystem.rxEdge, y);
                     this.g.fillStyle = 'rgba(0, 0, 0, 0.7)';
                     this.g.rect(this.coordinateSystem.oX + 5, y - 21, 70, 18);
                     this.g.fill();
@@ -666,13 +738,12 @@ var ChartUp = (function (window) {
         };
         //绘制纵向测量线
         BaseChart.prototype.paintTargetLineX = function (x, y) {
-            var vx = this.coordinateSystem.xOrigin + (x - 45) * (this.coordinateSystem.xEdge - this.coordinateSystem.xOrigin) / (this.coordinateSystem.lX);
+            var vx = this.coordinateSystem.xOrigin + (x - 45) * (this.coordinateSystem.xEdge - this.coordinateSystem.xOrigin) / this.coordinateSystem.lX;
             this.g.save();
             this.g.setLineDash([4, 2]);
             if (this.isInChart(x, y)) {
                 if (this.config.measureLine) {
-                    new DrawLine(this.g, x, this.coordinateSystem.ryEdge, 'rgba(0, 0, 0, 0.2)')
-                        .end(x, this.coordinateSystem.oY);
+                    new DrawLine(this.g, x, this.coordinateSystem.ryEdge, 'rgba(0, 0, 0, 0.2)').end(x, this.coordinateSystem.oY);
                     this.g.fillStyle = 'rgba(0, 0, 0, 0.7)';
                     this.g.rect(x + 5, this.coordinateSystem.oY - 21, 70, 18);
                     this.g.fill();
@@ -686,7 +757,8 @@ var ChartUp = (function (window) {
         };
         //绘制坐标提升框
         BaseChart.prototype.paintTipCase = function (x, y, flag) {
-            var vx = this.coordinateSystem.xOrigin + (x - 45) * (this.coordinateSystem.xEdge - this.coordinateSystem.xOrigin) / (this.coordinateSystem.lX), vy = this.coordinateSystem.yOrigin + Math.abs((y - this.config.canvasHeight + 45)) * (this.coordinateSystem.yEdge - this.coordinateSystem.yOrigin) / (this.coordinateSystem.lY);
+            var vx = this.coordinateSystem.xOrigin + (x - 45) * (this.coordinateSystem.xEdge - this.coordinateSystem.xOrigin) / this.coordinateSystem.lX,
+                vy = this.coordinateSystem.yOrigin + Math.abs(y - this.config.canvasHeight + 45) * (this.coordinateSystem.yEdge - this.coordinateSystem.yOrigin) / this.coordinateSystem.lY;
             if (this.isInChart(x, y)) {
                 this.g.fillStyle = 'rgba(0, 0, 0, 0.7)';
                 if (x + 90 > this.coordinateSystem.rxEdge) {
@@ -708,8 +780,7 @@ var ChartUp = (function (window) {
             var circleInfo = [];
             if (typeof item.points === 'function') {
                 return item.points;
-            }
-            else {
+            } else {
                 //遍历获取原点信息
                 item.points.map(function (it, index) {
                     var cyc = _this.coordinateSystem.calc(it[0], it[1]);
@@ -727,26 +798,25 @@ var ChartUp = (function (window) {
         //绘制点函数
         BaseChart.prototype.renderPoints = function (p, color) {
             //绘制第一个点
-            var cyc = new DrawArc(this.g, this.defaultRadius, 360), line = new DrawLine(this.g, p[0].x, p[0].y, color).paint(cyc);
+            var cyc = new DrawArc(this.g, this.defaultRadius, 360),
+                line = new DrawLine(this.g, p[0].x, p[0].y, color).paint(cyc);
             //继续绘制接下去的点
             for (var i = 1, length_1 = p.length; i < length_1; i++) {
-                i === length_1 ?
-                    line.next(p[i].x, p[i].y).paint(cyc) :
-                    line.end(p[i].x, p[i].y).paint(cyc);
+                i === length_1 ? line.next(p[i].x, p[i].y).paint(cyc) : line.end(p[i].x, p[i].y).paint(cyc);
             }
         };
         //绘制方程函数
         BaseChart.prototype.renderExpression = function (exp, color) {
-            var i = this.coordinateSystem.xOrigin, p = this.coordinateSystem.calc(i, exp(i)), line = new DrawLine(this.g, p.x, p.y, color);
+            var i = this.coordinateSystem.xOrigin,
+                p = this.coordinateSystem.calc(i, exp(i)),
+                line = new DrawLine(this.g, p.x, p.y, color);
             //循环不断求方程的解，直到方程的解>yEdge
             while (i < this.coordinateSystem.xEdge) {
                 i += 0.02;
                 p = this.coordinateSystem.calc(i, exp(i));
-                if (i > this.coordinateSystem.xEdge || exp(i) > this.coordinateSystem.yEdge ||
-                    exp(i) < this.coordinateSystem.yOrigin || i < this.coordinateSystem.xOrigin) {
+                if (i > this.coordinateSystem.xEdge || exp(i) > this.coordinateSystem.yEdge || exp(i) < this.coordinateSystem.yOrigin || i < this.coordinateSystem.xOrigin) {
                     line.next(p.x, p.y, 'transparent');
-                }
-                else {
+                } else {
                     line.next(p.x, p.y, color);
                 }
             }
@@ -757,15 +827,14 @@ var ChartUp = (function (window) {
             data.map(function (cir) {
                 if (typeof cir.ele === 'function') {
                     _this.renderExpression(cir.ele, cir.color);
-                }
-                else {
+                } else {
                     _this.renderPoints(cir.ele, cir.color);
                 }
             });
             return this;
         };
         return BaseChart;
-    }());
+    }();
     /*
     * @PointChart: 散点图表
     * 继承自BaseChart
@@ -775,7 +844,7 @@ var ChartUp = (function (window) {
     * renderResult
     * paintTipCase
     */
-    var PointChart = /** @class */ (function (_super) {
+    var PointChart = /** @class */function (_super) {
         __extends(PointChart, _super);
         function PointChart(Graphics, config) {
             return _super.call(this, Graphics, config) || this;
@@ -783,7 +852,8 @@ var ChartUp = (function (window) {
         //根据权重分析半径
         PointChart.prototype.getRadius = function (weights) {
             var _this = this;
-            var temp = [], minWeight = 0;
+            var temp = [],
+                minWeight = 0;
             weights.map(function (w) {
                 if (w) {
                     temp.push(w);
@@ -799,12 +869,17 @@ var ChartUp = (function (window) {
                 }
                 return w;
             });
-            return weights.map(function (w) { return Math.sqrt(w / minWeight) * _this.defaultRadius; });
+            return weights.map(function (w) {
+                return Math.sqrt(w / minWeight) * _this.defaultRadius;
+            });
         };
         //分析点数据
         PointChart.prototype.analyseItems = function (item, index) {
             var _this = this;
-            var radiusList = this.getRadius(item.points.map(function (i) { return i[2]; })), circleInfo = [];
+            var radiusList = this.getRadius(item.points.map(function (i) {
+                return i[2];
+            })),
+                circleInfo = [];
             //遍历获取原点信息
             item.points.map(function (it, index) {
                 var cyc = _this.coordinateSystem.calc(it[0], it[1]);
@@ -837,7 +912,8 @@ var ChartUp = (function (window) {
         };
         //绘制坐标提升框
         PointChart.prototype.paintTipCase = function (x, y, flag) {
-            var vx = (x - 45) * (this.coordinateSystem.xEdge - this.coordinateSystem.xOrigin) / (this.coordinateSystem.lX), vy = Math.abs((y - this.config.canvasHeight + 45)) * (this.coordinateSystem.yEdge - this.coordinateSystem.yOrigin) / (this.coordinateSystem.lY);
+            var vx = (x - 45) * (this.coordinateSystem.xEdge - this.coordinateSystem.xOrigin) / this.coordinateSystem.lX,
+                vy = Math.abs(y - this.config.canvasHeight + 45) * (this.coordinateSystem.yEdge - this.coordinateSystem.yOrigin) / this.coordinateSystem.lY;
             this.g.fillStyle = 'rgba(0, 0, 0, 0.7)';
             if (x + 90 > this.coordinateSystem.rxEdge) {
                 x = this.coordinateSystem.rxEdge - 90;
@@ -855,7 +931,7 @@ var ChartUp = (function (window) {
             return this;
         };
         return PointChart;
-    }(BaseChart));
+    }(BaseChart);
     /*
     * @AreaChart: 面积图表
     * 继承自BaseChart
@@ -869,7 +945,7 @@ var ChartUp = (function (window) {
     * drawCoordinateSystem
     * renderResult
     */
-    var AreaChart = /** @class */ (function (_super) {
+    var AreaChart = /** @class */function (_super) {
         __extends(AreaChart, _super);
         function AreaChart(Graphics, config) {
             var _this = _super.call(this, Graphics, config) || this;
@@ -888,13 +964,7 @@ var ChartUp = (function (window) {
         AreaChart.prototype.reRender = function (x, y) {
             this.g.save();
             //绘制坐标轴
-            this
-                .drawXaxis()
-                .paintGrid()
-                .drawCoordinateSystem()
-                .renderResult(this.data)
-                .paintTargetLineY(x, y)
-                .paintTipCase(x, y, this.mouseSelect(this.data, x, y));
+            this.drawXaxis().paintGrid().drawCoordinateSystem().renderResult(this.data).paintTargetLineY(x, y).paintTipCase(x, y, this.mouseSelect(this.data, x, y));
             this.g.restore();
         };
         //检查数据完整性
@@ -917,7 +987,8 @@ var ChartUp = (function (window) {
             var circleInfo = [];
             //遍历获取原点信息
             item.value.map(function (p, i) {
-                var pi = _this.data.length > 0 ? _this.data[index - 1].ele[i].cy + p : p, cyc = _this.coordinateSystem.calc(0, pi);
+                var pi = _this.data.length > 0 ? _this.data[index - 1].ele[i].cy + p : p,
+                    cyc = _this.coordinateSystem.calc(0, pi);
                 circleInfo.push({
                     y: cyc.y,
                     cy: pi,
@@ -970,8 +1041,7 @@ var ChartUp = (function (window) {
                                 color: item.color
                             };
                         }).map(function (p) {
-                            new DrawArc(_this.g, Math.floor(_this.defaultRadius * 1.4), 360)
-                                .render(p.p.x, p.p.y, p.color);
+                            new DrawArc(_this.g, Math.floor(_this.defaultRadius * 1.4), 360).render(p.p.x, p.p.y, p.color);
                         });
                         flag = {
                             points: data.map(function (item) {
@@ -996,10 +1066,7 @@ var ChartUp = (function (window) {
         };
         //绘制坐标轴
         AreaChart.prototype.drawCoordinateSystem = function () {
-            this.coordinateSystem
-                .rightAngle()
-                .setYIntervalPoint()
-                .baseLineX();
+            this.coordinateSystem.rightAngle().setYIntervalPoint().baseLineX();
             return this;
         };
         //绘制x轴元素
@@ -1011,8 +1078,7 @@ var ChartUp = (function (window) {
             this.g.textAlign = 'center';
             this.config.xAxis.map(function (gapName, index) {
                 var x = _this.coordinateSystem.oX + index * interval;
-                new DrawLine(_this.g, x, _this.coordinateSystem.oY)
-                    .end(x, _this.coordinateSystem.oY + 5);
+                new DrawLine(_this.g, x, _this.coordinateSystem.oY).end(x, _this.coordinateSystem.oY + 5);
                 _this.data.map(function (item) {
                     item.ele[index].x = x;
                 });
@@ -1025,37 +1091,32 @@ var ChartUp = (function (window) {
             var _this = this;
             this.g.save();
             for (var j = 0; j < data.length; j++) {
-                var line = null, cur = data[j], prev = j > 0 ? data[j - 1] : cur;
+                var line = null,
+                    cur = data[j],
+                    prev = j > 0 ? data[j - 1] : cur;
                 for (var i = 0; i < cur.ele.length; i++) {
-                    var c = cur.ele[i], p = prev.ele[i];
+                    var c = cur.ele[i],
+                        p = prev.ele[i];
                     this.g.fillStyle = cur.color;
                     this.g.globalAlpha = 0.5;
                     if (j === 0) {
                         if (i === 0) {
-                            line = new DrawLine(this.g, this.coordinateSystem.oX, this.coordinateSystem.oY, prev.color)
-                                .next(p.x, p.y);
-                        }
-                        else if (i === prev.ele.length - 1) {
-                            line = line.next(p.x, p.y)
-                                .end(this.coordinateSystem.rxEdge, this.coordinateSystem.oY, true);
-                        }
-                        else {
+                            line = new DrawLine(this.g, this.coordinateSystem.oX, this.coordinateSystem.oY, prev.color).next(p.x, p.y);
+                        } else if (i === prev.ele.length - 1) {
+                            line = line.next(p.x, p.y).end(this.coordinateSystem.rxEdge, this.coordinateSystem.oY, true);
+                        } else {
                             line = line.next(p.x, p.y);
                         }
-                    }
-                    else {
+                    } else {
                         if (i === 0) {
-                            line = new DrawLine(this.g, p.x, p.y, cur.color)
-                                .next(c.x, c.y);
-                        }
-                        else if (i === cur.ele.length - 1) {
+                            line = new DrawLine(this.g, p.x, p.y, cur.color).next(c.x, c.y);
+                        } else if (i === cur.ele.length - 1) {
                             line = line.next(c.x, c.y);
                             for (var k = prev.ele.length - 1; k >= 0; k--) {
                                 line = line.next(prev.ele[k].x, prev.ele[k].y);
                             }
                             line.end(cur.ele[0].x, cur.ele[0].y, true);
-                        }
-                        else {
+                        } else {
                             line = line.next(c.x, c.y);
                         }
                     }
@@ -1071,7 +1132,7 @@ var ChartUp = (function (window) {
             return this;
         };
         return AreaChart;
-    }(BaseChart));
+    }(BaseChart);
     /*
     * @PillarChart: 柱状图表
     * 继承自AreaChart
@@ -1083,7 +1144,7 @@ var ChartUp = (function (window) {
     * drawXaxis
     * renderResult
     */
-    var PillarChart = /** @class */ (function (_super) {
+    var PillarChart = /** @class */function (_super) {
         __extends(PillarChart, _super);
         function PillarChart(Graphics, config) {
             var _this = _super.call(this, Graphics, config) || this;
@@ -1099,7 +1160,8 @@ var ChartUp = (function (window) {
             this.interval = this.coordinateSystem.lX / this.length;
             this.width = this.interval / (2 * this.items.length + 1);
             item.value.map(function (v, i) {
-                var x = _this.coordinateSystem.oX + i * _this.interval + _this.width * (2 * index + 1), height = _this.coordinateSystem.oY - _this.coordinateSystem.calc(0, v).y;
+                var x = _this.coordinateSystem.oX + i * _this.interval + _this.width * (2 * index + 1),
+                    height = _this.coordinateSystem.oY - _this.coordinateSystem.calc(0, v).y;
                 valueInfo.push({
                     x: x,
                     y: _this.coordinateSystem.oY - height,
@@ -1138,7 +1200,7 @@ var ChartUp = (function (window) {
                 xLabel: ''
             };
             if (this.items.length) {
-                var _loop_1 = function (i) {
+                var _loop_1 = function _loop_1(i) {
                     var rx = this_1.coordinateSystem.oX + i * this_1.interval;
                     this_1.g.beginPath();
                     this_1.g.rect(rx, this_1.coordinateSystem.ryEdge, this_1.interval, this_1.coordinateSystem.lY);
@@ -1172,8 +1234,7 @@ var ChartUp = (function (window) {
             this.g.textAlign = 'center';
             this.config.xAxis.map(function (gapName, index) {
                 var x = _this.coordinateSystem.oX + index * interval;
-                new DrawLine(_this.g, x, _this.coordinateSystem.oY)
-                    .end(x, _this.coordinateSystem.oY + 5);
+                new DrawLine(_this.g, x, _this.coordinateSystem.oY).end(x, _this.coordinateSystem.oY + 5);
                 _this.g.fillText(gapName, x + interval / 2, _this.coordinateSystem.oY + 25);
             });
             this.g.restore();
@@ -1189,7 +1250,7 @@ var ChartUp = (function (window) {
             return this;
         };
         return PillarChart;
-    }(AreaChart));
+    }(AreaChart);
     /*
     * @LineChart: 折线图表
     * 继承自AreaChart
@@ -1200,7 +1261,7 @@ var ChartUp = (function (window) {
     * drawXaxis
     * renderResult
     */
-    var LineChart = /** @class */ (function (_super) {
+    var LineChart = /** @class */function (_super) {
         __extends(LineChart, _super);
         function LineChart(Graphics, config) {
             return _super.call(this, Graphics, config) || this;
@@ -1213,8 +1274,7 @@ var ChartUp = (function (window) {
             this.g.textAlign = 'center';
             this.config.xAxis.map(function (gapName, index) {
                 var x = _this.coordinateSystem.oX + (index + 1) * interval;
-                new DrawLine(_this.g, x, _this.coordinateSystem.oY)
-                    .end(x, _this.coordinateSystem.oY + 5);
+                new DrawLine(_this.g, x, _this.coordinateSystem.oY).end(x, _this.coordinateSystem.oY + 5);
                 _this.data.map(function (item) {
                     item.ele[index].x = x;
                 });
@@ -1230,7 +1290,8 @@ var ChartUp = (function (window) {
             this.interval = this.coordinateSystem.lX / (this.length + 1);
             //遍历获取原点信息
             item.value.map(function (p, i) {
-                var cyc = _this.coordinateSystem.calc(0, p), x = _this.coordinateSystem.oX + _this.interval + _this.interval * i;
+                var cyc = _this.coordinateSystem.calc(0, p),
+                    x = _this.coordinateSystem.oX + _this.interval + _this.interval * i;
                 circleInfo.push({
                     x: x,
                     y: cyc.y,
@@ -1261,16 +1322,15 @@ var ChartUp = (function (window) {
         };
         LineChart.prototype.renderResult = function (data) {
             var _this = this;
-            var line = null, cyc = new DrawArc(this.g, this.defaultRadius, 360);
+            var line = null,
+                cyc = new DrawArc(this.g, this.defaultRadius, 360);
             data.map(function (p, index) {
                 p.ele.map(function (v, i) {
                     if (i === 0) {
                         line = new DrawLine(_this.g, v.x, v.y, p.color);
-                    }
-                    else if (i === p.ele.length - 1) {
+                    } else if (i === p.ele.length - 1) {
                         line = line.end(v.x, v.y);
-                    }
-                    else {
+                    } else {
                         line = line.next(v.x, v.y);
                     }
                     line.paint(cyc);
@@ -1279,12 +1339,12 @@ var ChartUp = (function (window) {
             return this;
         };
         return LineChart;
-    }(AreaChart));
+    }(AreaChart);
     /*
     * 新类型
     * @PieChart: 饼状图表
     */
-    var PieChart = /** @class */ (function () {
+    var PieChart = /** @class */function () {
         function PieChart(Graphics, config) {
             this.g = null;
             this.config = null;
@@ -1309,7 +1369,9 @@ var ChartUp = (function (window) {
         }
         //对项目进行排序
         PieChart.prototype.sortItem = function (items) {
-            items.sort(function (item1, item2) { return item1.value - item2.value; });
+            items.sort(function (item1, item2) {
+                return item1.value - item2.value;
+            });
             return this;
         };
         //为每一个项目标上索引
@@ -1323,8 +1385,8 @@ var ChartUp = (function (window) {
         PieChart.prototype.analyseItems = function (item, index) {
             return {
                 value: item.value,
-                angle: (item.value * 360) / this.total,
-                ratio: ((item.value / this.total) * 100).toFixed(1) + '%'
+                angle: item.value * 360 / this.total,
+                ratio: (item.value / this.total * 100).toFixed(1) + '%'
             };
         };
         ;
@@ -1332,7 +1394,8 @@ var ChartUp = (function (window) {
         PieChart.prototype.bindMouseEvent = function () {
             var _this = this;
             this.config.canvas.addEventListener('mousemove', function (e) {
-                var x = e.clientX - _this.config.canvas.getBoundingClientRect().left, y = e.clientY - _this.config.canvas.getBoundingClientRect().top;
+                var x = e.clientX - _this.config.canvas.getBoundingClientRect().left,
+                    y = e.clientY - _this.config.canvas.getBoundingClientRect().top;
                 _this.g.clearRect(0, 0, _this.config.canvasWidth, _this.config.canvasHeight);
                 _this.reRender(x, y);
             });
@@ -1342,14 +1405,14 @@ var ChartUp = (function (window) {
         //结果渲染，将分析好的数据渲染出来
         PieChart.prototype.renderResult = function (data) {
             var _this = this;
-            var cir = null, startAngle = 0, endAngle = 0;
+            var cir = null,
+                startAngle = 0,
+                endAngle = 0;
             this.g.save();
             data.map(function (pie) {
                 if (!cir) {
-                    cir = new DrawArc(_this.g, _this.config.radius, pie.ele.angle)
-                        .render(_this.centerPoint[0], _this.centerPoint[1], pie.color);
-                }
-                else {
+                    cir = new DrawArc(_this.g, _this.config.radius, pie.ele.angle).render(_this.centerPoint[0], _this.centerPoint[1], pie.color);
+                } else {
                     cir = cir.next(pie.ele.angle, pie.color);
                 }
             });
@@ -1359,8 +1422,7 @@ var ChartUp = (function (window) {
                 if (index === 0) {
                     startAngle = 0;
                     endAngle = pie.ele.angle;
-                }
-                else {
+                } else {
                     startAngle = endAngle;
                     endAngle = startAngle + pie.ele.angle;
                 }
@@ -1400,15 +1462,16 @@ var ChartUp = (function (window) {
         PieChart.prototype.mouseSelect = function (data, x, y) {
             var _this = this;
             //标志符：用作判断鼠标是否移到了圆点里面
-            var flag = null, startAngle = 0, endAngle = 0;
+            var flag = null,
+                startAngle = 0,
+                endAngle = 0;
             data.map(function (pie, index) {
                 _this.g.save();
                 _this.g.fillStyle = pie.color;
                 if (index === 0) {
                     startAngle = 0;
                     endAngle = pie.ele.angle;
-                }
-                else {
+                } else {
                     startAngle = endAngle;
                     endAngle = startAngle + pie.ele.angle;
                 }
@@ -1432,9 +1495,7 @@ var ChartUp = (function (window) {
         PieChart.prototype.reRender = function (x, y) {
             this.g.save();
             //绘制图表结果
-            this
-                .renderResult(this.data)
-                .paintTipCase(x, y, this.mouseSelect(this.data, x, y));
+            this.renderResult(this.data).paintTipCase(x, y, this.mouseSelect(this.data, x, y));
             this.g.restore();
         };
         ;
@@ -1446,12 +1507,11 @@ var ChartUp = (function (window) {
                 itemList.map(function (label) {
                     _this.config.items.map(function (item) {
                         if (item.label === label) {
-                            _this.items.splice(item.index, 0, item);
+                            _this.items.push(item);
                         }
                     });
                 });
-            }
-            else {
+            } else {
                 this.items = this.config.items;
             }
             this.sortItem(this.items);
@@ -1465,7 +1525,9 @@ var ChartUp = (function (window) {
             this.g.clearRect(0, 0, this.config.canvasWidth, this.config.canvasHeight);
             this.itemList = itemList;
             //计算总和
-            this.total = _SUM(this.items.map(function (item) { return item.value; }));
+            this.total = _SUM(this.items.map(function (item) {
+                return item.value;
+            }));
             //遍历items分析数据
             this.items.map(function (item, index) {
                 _this.data.push({
@@ -1480,7 +1542,7 @@ var ChartUp = (function (window) {
         };
         ;
         return PieChart;
-    }());
+    }();
     /*
     * @PieChart: 环形图表
     * 继承自PieChart
@@ -1489,7 +1551,7 @@ var ChartUp = (function (window) {
     * paintTipCase
     * mouseSelect
     */
-    var AnnularChart = /** @class */ (function (_super) {
+    var AnnularChart = /** @class */function (_super) {
         __extends(AnnularChart, _super);
         function AnnularChart(Graphics, config) {
             var _this = _super.call(this, Graphics, config) || this;
@@ -1500,22 +1562,22 @@ var ChartUp = (function (window) {
         }
         //绘制中心白色的圆
         AnnularChart.prototype.drawCenterCircle = function () {
-            new DrawArc(this.g, this.config.radius - this.config.width, 360)
-                .render(this.centerPoint[0], this.centerPoint[1], '#fff');
+            new DrawArc(this.g, this.config.radius - this.config.width, 360).render(this.centerPoint[0], this.centerPoint[1], '#fff');
             return this;
         };
         //鼠标选中项目效果处理
         AnnularChart.prototype.mouseSelect = function (data, x, y) {
             var _this = this;
             //标志符：用作判断鼠标是否移到了圆点里面
-            var flag = null, startAngle = 0, endAngle = 0;
+            var flag = null,
+                startAngle = 0,
+                endAngle = 0;
             this.g.strokeStyle = '#000';
             data.map(function (pie, index) {
                 if (index === 0) {
                     startAngle = 0;
                     endAngle = pie.ele.angle;
-                }
-                else {
+                } else {
                     startAngle = endAngle;
                     endAngle = startAngle + pie.ele.angle;
                 }
@@ -1538,7 +1600,8 @@ var ChartUp = (function (window) {
         ;
         //判断是否在圆内
         AnnularChart.prototype.isInAnnular = function (x, y) {
-            var inCircle = false, outAnnular = false;
+            var inCircle = false,
+                outAnnular = false;
             this.g.beginPath();
             this.g.arc(this.centerPoint[0], this.centerPoint[1], this.config.radius, 0, 2 * Math.PI);
             if (this.g.isPointInPath(x, y)) {
@@ -1569,49 +1632,114 @@ var ChartUp = (function (window) {
         };
         ;
         return AnnularChart;
-    }(PieChart));
+    }(PieChart);
     /*
     * 新类型
     * @RadarChart: 雷达图表
     */
-    var RadarChart = /** @class */ (function () {
+    var RadarChart = /** @class */function () {
         function RadarChart(Graphics, config) {
             this.g = null;
             this.config = null;
-            this.centerPoint = [];
+            this.defaultRadius = 200;
+            this.length = 0;
+            this.data = [];
+            this.items = [];
+            this.itemList = [];
+            this.radarSystem = null;
             this.g = Graphics;
             this.config = config;
-            this.centerPoint = [this.config.canvasWidth / 2, this.config.canvasHeight / 2];
+            //index为必要配置项
+            if (this.config.index === undefined) {
+                console.warn("'index' option is required.");
+                return null;
+            }
+            //设置默认半径
+            this.defaultRadius = this.config.defaultRadius === undefined ? this.defaultRadius : this.config.defaultRadius;
+            this.config.defaultRadius = this.defaultRadius;
+            this.length = this.config.index.length;
+            this.config.centerX = this.config.canvasWidth / 2;
+            this.config.centerY = this.config.canvasHeight / 2;
+            this.bindMouseEvent();
+            this.indexItem(this.config.items);
         }
+        //对项目进行排序
+        RadarChart.prototype.sortItem = function (items) {
+            items.sort(function (item1, item2) {
+                return item1.value - item2.value;
+            });
+            return this;
+        };
+        //为每一个项目标上索引
+        RadarChart.prototype.indexItem = function (items) {
+            items.map(function (item, index) {
+                item.index = index;
+            });
+            return this;
+        };
+        //判断鼠标是否在图表内
+        RadarChart.prototype.isInChart = function (x, y) {
+            return;
+        };
         //绘制雷达网
         RadarChart.prototype.drawRadarNet = function (index) {
+            this.radarSystem.render();
+            return this;
         };
-        RadarChart.prototype.analyseItems = function (item, index) {
-        };
+        RadarChart.prototype.analyseItems = function (item, index) {};
         ;
-        RadarChart.prototype.bindMouseEvent = function () {
-        };
+        RadarChart.prototype.bindMouseEvent = function () {};
         ;
-        RadarChart.prototype.renderResult = function (data) {
-        };
+        RadarChart.prototype.renderResult = function (data) {};
         ;
-        RadarChart.prototype.paintTipCase = function (x, y, flag) {
-        };
+        RadarChart.prototype.paintTipCase = function (x, y, flag) {};
         ;
-        RadarChart.prototype.mouseSelect = function (data, x, y) {
-        };
+        RadarChart.prototype.mouseSelect = function (data, x, y) {};
         ;
         RadarChart.prototype.reRender = function (x, y) {
+            this.g.save();
+            //绘制图表结果
+            this.drawRadarNet(this.config.index).renderResult(this.data);
+            this.g.restore();
         };
         ;
         RadarChart.prototype.render = function (itemList) {
+            var _this = this;
+            this.items = [];
+            this.data = [];
+            if (itemList) {
+                itemList.map(function (label) {
+                    _this.config.items.map(function (item) {
+                        if (item.label === label) {
+                            _this.items.push(item);
+                        }
+                    });
+                });
+            } else {
+                this.items = this.config.items;
+            }
+            this.sortItem(this.items);
+            this.g.clearRect(0, 0, this.config.canvasWidth, this.config.canvasHeight);
+            this.radarSystem = new DrawRadarSystem(this.g, this.config, this.items);
+            this.itemList = itemList;
+            //遍历items分析数据
+            this.items.map(function (item, index) {
+                _this.data.push({
+                    ele: _this.analyseItems(item, index),
+                    color: item.color,
+                    label: item.label
+                });
+            });
+            //第一次渲染
+            this.reRender(0, 0);
+            return this;
         };
         ;
         return RadarChart;
-    }());
+    }();
     /*------------------------------图表类-END----------------------------------- */
     /*---------------------------ChartUp主类------------------------------- */
-    var ChartPrototype = /** @class */ (function () {
+    var ChartPrototype = /** @class */function () {
         //entrance
         function ChartPrototype() {
             //暴露的工具方法集
@@ -1620,7 +1748,7 @@ var ChartUp = (function (window) {
             this.configuration = _Gconfig;
             this.fn = {
                 //绘制线方法，返回DrawLine类的实例
-                drawLine: function (Graphics, x, y, color) {
+                drawLine: function drawLine(Graphics, x, y, color) {
                     return new DrawLine(Graphics, x, y, color);
                 },
                 //动绘制方法
@@ -1632,15 +1760,16 @@ var ChartUp = (function (window) {
             if (el.className.indexOf('active') > -1) {
                 el.classList.remove('active');
                 itemList.push(label);
-            }
-            else {
+            } else {
                 el.classList.add('active');
                 itemList.splice(itemList.indexOf(label), 1);
             }
             config.chartIntance.render(itemList);
         };
         ChartPrototype.prototype.createTagItem = function (label, color, itemList, config) {
-            var tagItem = document.createElement('li'), tag = document.createElement('span'), labelText = document.createElement('span');
+            var tagItem = document.createElement('li'),
+                tag = document.createElement('span'),
+                labelText = document.createElement('span');
             var _self = this;
             tagItem.setAttribute('data-item', label);
             tag.classList.add('tag');
@@ -1658,7 +1787,12 @@ var ChartUp = (function (window) {
         //用作为图表添加标题，标签等
         ChartPrototype.prototype.addCondition = function (container, config) {
             var _this = this;
-            var title = document.createElement('h2'), canvas = document.createElement('canvas'), tagCon = document.createElement('ul'), itemList = config.items.map(function (item) { return item.label; });
+            var title = document.createElement('h2'),
+                canvas = document.createElement('canvas'),
+                tagCon = document.createElement('ul'),
+                itemList = config.items.map(function (item) {
+                return item.label;
+            });
             container.classList.add('chartUp-container');
             title.innerHTML = config.title ? config.title : '';
             tagCon.classList.add('tag-con');
@@ -1705,7 +1839,7 @@ var ChartUp = (function (window) {
             };
         };
         return ChartPrototype;
-    }());
+    }();
     //实例化Chart
     var ChartUp = new ChartPrototype();
     //扩展: 基础图表
@@ -1748,212 +1882,8 @@ var ChartUp = (function (window) {
         chartType: 'RadarChart',
         chartClass: RadarChart
     });
-    /*------------------------------模拟使用------------------------------------ */
-    ChartUp.BaseChart('#con1', {
-        title: 'Mychart',
-        interval: [5, 5],
-        items: [
-            {
-                label: 'y = (1/16)*x^2',
-                points: function (x) {
-                    return (1 / 16) * x * x;
-                },
-                color: 'green'
-            },
-            {
-                label: 'y = (1/20)*e^x',
-                points: function (x) {
-                    return (1 / 20) * Math.pow(Math.E, x);
-                },
-                color: '#512DA8'
-            },
-            {
-                label: 'y = 15*sin(x) + 20',
-                points: function (x) {
-                    return 10 * Math.sin(x) + 12;
-                },
-                color: '#FFC107'
-            }
-        ]
-    });
-    ChartUp.PointChart('#con2', {
-        title: 'Myanotherchart',
-        interval: [5, 5],
-        defaultRadius: 4,
-        items: [{
-                label: '小绿',
-                points: Array.from(new Array(50), function (n) { return [Math.random() * 65, Math.random() * 30, Math.floor(Math.random() * 20)]; }),
-                color: 'rgba(0, 188, 212, 0.8)'
-            },
-            {
-                label: '小橙',
-                points: Array.from(new Array(20), function (n) { return [Math.random() * 40, Math.random() * 30, Math.floor(Math.random() * 15)]; }),
-                color: 'rgba(205, 220, 57, 0.8)'
-            }]
-    });
-    ChartUp.PillarChart('#con3', {
-        title: 'Thrirdchart',
-        interval: 20,
-        xAxis: ['一月', '二月', '三月', '四月', '五月', '六月'],
-        items: [{
-                label: 'A',
-                value: Array.from(new Array(6), function (x) { return Math.ceil(Math.random() * 60); }),
-                color: 'rgba(155, 89, 182, 0.8)'
-            },
-            {
-                label: 'B',
-                value: Array.from(new Array(6), function (x) { return Math.ceil(Math.random() * 60); }),
-                color: 'rgba(63, 81, 181, 0.8)'
-            },
-            {
-                label: 'C',
-                value: Array.from(new Array(6), function (x) { return Math.ceil(Math.random() * 60); }),
-                color: 'rgba(205, 220, 57, 0.8)'
-            },
-            {
-                label: 'D',
-                value: Array.from(new Array(6), function (x) { return Math.ceil(Math.random() * 60); }),
-                color: 'rgba(96, 125, 139, 0.8)'
-            }]
-    });
-    ChartUp.AreaChart('#con4', {
-        title: 'Area',
-        interval: 20,
-        xAxis: Array.from(new Array(new Date().getFullYear() - 2010), function (y, i) { return new Date().getFullYear() - i; }).reverse(),
-        items: [
-            {
-                label: 'C',
-                color: '#673AB7',
-                value: Array.from(new Array(new Date().getFullYear() - 2010), function (x) { return Math.ceil(Math.random() * 30); })
-            },
-            {
-                label: 'C++',
-                color: '#FFC107',
-                value: Array.from(new Array(new Date().getFullYear() - 2010), function (x) { return Math.ceil(Math.random() * 30); })
-            },
-            {
-                label: 'java',
-                color: '#CDDC39',
-                value: [40, 20, 33, 64, 15, 18, 21]
-            },
-            {
-                label: 'PHP',
-                color: 'rgba(192, 57, 43, 1.0)',
-                value: [40, 20, 33, 64, 15, 18, 21]
-            }
-        ]
-    });
-    ChartUp.PieChart('#con5', {
-        title: 'PieChart',
-        radius: 200,
-        items: [{
-                label: 'A',
-                value: Math.ceil(Math.random() * 100),
-                color: '#ff5722'
-            },
-            {
-                label: 'B',
-                value: Math.ceil(Math.random() * 100),
-                color: '#1b5e20'
-            },
-            {
-                label: 'C',
-                value: Math.ceil(Math.random() * 100),
-                color: '#1565c0'
-            },
-            {
-                label: 'D',
-                value: Math.ceil(Math.random() * 100),
-                color: '#ffa000'
-            },
-            {
-                label: 'E',
-                value: Math.ceil(Math.random() * 100),
-                color: '#C2185B'
-            },
-            {
-                label: 'F',
-                value: 18,
-                color: '#5D4037'
-            }]
-    });
-    ChartUp.AnnularChart('#con6', {
-        title: 'AnnularChart',
-        radius: 200,
-        width: 80,
-        items: [{
-                label: 'A',
-                value: Math.ceil(Math.random() * 100),
-                color: '#ff5722'
-            },
-            {
-                label: 'B',
-                value: Math.ceil(Math.random() * 100),
-                color: '#1b5e20'
-            },
-            {
-                label: 'C',
-                value: Math.ceil(Math.random() * 100),
-                color: '#1565c0'
-            },
-            {
-                label: 'D',
-                value: Math.ceil(Math.random() * 100),
-                color: '#ffa000'
-            },
-            {
-                label: 'Esss',
-                value: Math.ceil(Math.random() * 100),
-                color: '#e6ee9c'
-            },
-            {
-                label: '看电影',
-                value: Math.ceil(Math.random() * 100),
-                color: '#7986cb'
-            }]
-    });
-    ChartUp.LineChart('#con7', {
-        title: 'Thrirdchart',
-        interval: 20,
-        xAxis: Array.from(new Array(6), function (x, i) { return "\u7B2C" + (i + 1) + "\u661F\u671F"; }),
-        items: [{
-                label: 'A',
-                value: Array.from(new Array(6), function (x) { return Math.ceil(Math.random() * 60); }),
-                color: 'rgba(155, 89, 182, 0.8)'
-            },
-            {
-                label: 'B',
-                value: Array.from(new Array(6), function (x) { return Math.ceil(Math.random() * 60); }),
-                color: 'rgba(63, 81, 181, 0.8)'
-            },
-            {
-                label: 'C',
-                value: Array.from(new Array(6), function (x) { return Math.ceil(Math.random() * 60); }),
-                color: 'rgba(205, 220, 57, 0.8)'
-            }]
-    });
-    ChartUp.RadarChart('#con8', {
-        title: 'Thrirdchart',
-        index: ['篮板', '得分', '盖帽', '助攻', '抢断'],
-        items: [
-            {
-                label: 'player1',
-                value: Array.from(new Array(5), function (x) { return Math.ceil(Math.random() * 15); }),
-                color: 'rgba(3, 169, 244, 0.8)'
-            },
-            {
-                label: 'player1',
-                value: Array.from(new Array(5), function (x) { return Math.ceil(Math.random() * 15); }),
-                color: 'rgba(255, 193, 7, 0.8)'
-            }
-        ]
-    });
     window['Chart'] = ChartUp;
     return ChartUp;
-})(window);
-//es6 module
-exports["default"] = ChartUp;
-
-
-/***/ })
-/******/ ]);
+}(window);
+//es6 module  
+//export default ChartUp;

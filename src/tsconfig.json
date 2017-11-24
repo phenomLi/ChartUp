@@ -4,6 +4,6 @@
         "sourceMap": true  
     },  
     "files": [  
-        "./ChartUp.ts"  
+        "./ChartUp-dev.ts"  
    ]  
 }  

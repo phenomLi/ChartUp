@@ -1,0 +1,267 @@
+<html>
+<head>
+<meta charset="utf-8">
+<title></title>
+<link rel="stylesheet" href="../build/ChartUp.min.css">
+<style>
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    padding-bottom: 200px;
+}
+
+.chartUp-container {
+    width: 700px;
+    height: 700px;
+    margin: 20px auto 0;
+}
+
+</style>
+</head>
+
+<body>
+
+<div id="con1"></div>    
+
+<div id="con2"></div> 
+
+<div id="con3"></div> 
+
+<div id="con4"></div>
+
+<div id="con7"></div>
+
+<div id="con5"></div>
+
+<div id="con6"></div>
+
+<div id="con8"></div>
+
+<script src="../build/ChartUp.js"></script>
+<script>
+
+
+ChartUp.BaseChart('#con1', {
+	title: 'Mychart',
+	interval: [5, 5],
+    items: [	
+		{
+			label: 'y = (1/16)*x^2',
+			points: function(x) {
+				return (1/16)*x*x;
+			},
+			color: 'green'
+		},
+		{
+			label: 'y = (1/20)*e^x',
+			points: function(x) {
+				return (1/20)*Math.pow(Math.E, x);
+			},
+			color: '#512DA8'
+		},
+		{
+			label: 'y = 15*sin(x) + 20',
+			points: function(x) {
+				return 10*Math.sin(x) + 12;
+			},
+			color: '#FFC107'
+		}
+	]
+});
+
+ChartUp.PointChart('#con2', {
+	title: 'Myanotherchart',
+	interval: [5, 5],
+	defaultRadius: 4,
+    items: [{
+		label: '小绿',
+		points: Array.from(new Array(50), n => [Math.random()*65, Math.random()*30, Math.floor(Math.random()*20)]),
+		color: 'rgba(0, 188, 212, 0.8)'
+	},
+	{
+		label: '小橙',
+		points: Array.from(new Array(20), n => [Math.random()*40, Math.random()*30, Math.floor(Math.random()*15)]),
+		color: 'rgba(205, 220, 57, 0.8)'
+	}]
+});
+
+ChartUp.PillarChart('#con3', {
+	title: 'Thrirdchart',
+	interval: 20,
+	xAxis: ['一月', '二月', '三月', '四月', '五月', '六月'],
+    items: [{
+		label: 'A',
+		value: Array.from(new Array(6), x => Math.ceil(Math.random()*60)),
+		color: 'rgba(155, 89, 182, 0.8)'
+	}, 
+	{
+		label: 'B',
+		value: Array.from(new Array(6), x => Math.ceil(Math.random()*60)),
+		color: 'rgba(63, 81, 181, 0.8)'
+	},
+	{
+		label: 'C',
+		value: Array.from(new Array(6), x => Math.ceil(Math.random()*60)),
+		color: 'rgba(205, 220, 57, 0.8)'
+	},
+	{
+		label: 'D',
+		value: Array.from(new Array(6), x => Math.ceil(Math.random()*60)),
+		color: 'rgba(96, 125, 139, 0.8)'
+	}]
+});
+
+
+
+
+ChartUp.AreaChart('#con4', {
+	title: 'Area',
+	interval: 20,
+	xAxis: Array.from(new Array(new Date().getFullYear() - 2010), (y, i) => new Date().getFullYear() - i).reverse(),
+	items: [
+		{
+			label: 'C',
+			color: '#673AB7',
+			value: Array.from(new Array(new Date().getFullYear() - 2010), x => Math.ceil(Math.random()*30)),
+		},
+		{
+			label: 'C++',
+			color: '#FFC107',
+			value: Array.from(new Array(new Date().getFullYear() - 2010), x => Math.ceil(Math.random()*30))
+		},
+		{
+			label: 'java',
+			color: '#CDDC39',
+			value: [40, 20, 33, 64, 15, 18, 21]
+		},
+		{
+			label: 'PHP',
+			color: 'rgba(192, 57, 43, 1.0)',
+			value: [40, 20, 33, 64, 15, 18, 21]
+		}
+	]
+});
+
+
+ChartUp.PieChart('#con5', {
+	title: 'PieChart',
+	radius: 200,
+    items: [{
+		label: 'A',
+		value: Math.ceil(Math.random()*100),
+		color: '#ff5722'
+	},
+	{
+		label: 'B',
+		value: Math.ceil(Math.random()*100),
+		color: '#1b5e20'
+	},
+	{
+		label: 'C',
+		value: Math.ceil(Math.random()*100),
+		color: '#1565c0'
+	},
+	{
+		label: 'D',
+		value: Math.ceil(Math.random()*100),
+		color: '#ffa000'
+	},
+	{
+		label: 'E',
+		value: Math.ceil(Math.random()*100),
+		color: '#C2185B'
+	},
+	{
+		label: 'F',
+		value: 18,
+		color: '#5D4037'
+	}]
+});
+
+
+ChartUp.AnnularChart('#con6', {
+	title: 'AnnularChart',
+	radius: 200,
+	width: 80,
+    items: [{
+		label: 'A',
+		value: Math.ceil(Math.random()*100),
+		color: '#ff5722'
+	},
+	{
+		label: 'B',
+		value: Math.ceil(Math.random()*100),
+		color: '#1b5e20'
+	},
+	{
+		label: 'C',
+		value: Math.ceil(Math.random()*100),
+		color: '#1565c0'
+	},
+	{
+		label: 'D',
+		value: Math.ceil(Math.random()*100),
+		color: '#ffa000'
+	},
+	{
+		label: 'Esss',
+		value: Math.ceil(Math.random()*100),
+		color: '#e6ee9c'
+	},
+	{
+		label: '看电影',
+		value: Math.ceil(Math.random()*100),
+		color: '#7986cb'
+	}]
+});
+
+ChartUp.LineChart('#con7', {
+	title: 'Thrirdchart',
+	interval: 20,
+	xAxis: Array.from(new Array(6), (x, i) => `第${i + 1}星期`),
+    items: [{
+		label: 'A',
+		value: Array.from(new Array(6), x => Math.ceil(Math.random()*60)),
+		color: 'rgba(155, 89, 182, 0.8)'
+	}, 
+	{
+		label: 'B',
+		value: Array.from(new Array(6), x => Math.ceil(Math.random()*60)),
+		color: 'rgba(63, 81, 181, 0.8)'
+	},
+	{
+		label: 'C',
+		value: Array.from(new Array(6), x => Math.ceil(Math.random()*60)),
+		color: 'rgba(205, 220, 57, 0.8)'
+	}]
+});
+
+
+ChartUp.RadarChart('#con8', {
+	title: 'RADAR',
+	interval: 5,
+	index: ['篮板', '得分', '盖帽', '助攻', '抢断'],
+	items: [
+		{
+			label: 'player1',
+			value: Array.from(new Array(5), x => Math.ceil(Math.random()*15)),
+			color: 'rgba(3, 169, 244, 0.8)'
+		},
+		{
+			label: 'player1',
+			value: Array.from(new Array(5), x => Math.ceil(Math.random()*15)),
+			color: 'rgba(255, 193, 7, 0.8)'
+		}
+	]
+});
+
+
+</script>
+
+</body>
+</html>
