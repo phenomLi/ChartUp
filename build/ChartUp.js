@@ -54,6 +54,143 @@ var ChartUp = function (window) {
             return prev + cur;
         }) : 0;
     };
+    /*---------------------------ChartUp主类------------------------------- */
+    var ChartPrototype = /** @class */function () {
+        //entrance
+        function ChartPrototype() {
+            //暴露的工具方法集
+            this.fn = {};
+            //version
+            this.version = '0.0.2';
+            //全局设置API
+            this.configuration = _Gconfig;
+            this.fn = {
+                //绘制线方法，返回DrawLine类的实例
+                drawLine: function drawLine(Graphics, x, y, color) {
+                    return new DrawLine(Graphics, x, y, color);
+                },
+                //绘制扇形方法，返回DrawArc类的实例
+                DrawArc: function DrawArc(Graphics, radius, angle, isSoild) {
+                    if (isSoild === void 0) {
+                        isSoild = true;
+                    }
+                    return new _DrawArc(Graphics, radius, angle, isSoild);
+                },
+                //绘制矩形方法，返回DrawRect类的实例
+                DrawRect: function DrawRect(Graphics, width, height, isFill) {
+                    if (isFill === void 0) {
+                        isFill = true;
+                    }
+                    return new _DrawRect(Graphics, width, height, true);
+                },
+                //动绘制方法
+                animate: _Animate
+            };
+        }
+        ChartPrototype.prototype.changeItem = function (el, config) {
+            var label = el.getAttribute('data-item');
+            if (el.className.indexOf('active') > -1) {
+                el.classList.remove('active');
+                config.itemList.push(label);
+            } else {
+                el.classList.add('active');
+                config.itemList.splice(config.itemList.indexOf(label), 1);
+            }
+            config.chartIntance.render(config.itemList);
+        };
+        //创建项目控件
+        ChartPrototype.prototype.createTagItem = function (container, item, config) {
+            var tagItem = document.createElement('li'),
+                tag = document.createElement('span'),
+                labelText = document.createElement('span');
+            var _self = this;
+            tagItem.setAttribute('data-item', item.label);
+            tag.classList.add('tag');
+            tag.style.backgroundColor = item.color;
+            labelText.classList.add('label');
+            labelText.innerHTML = item.label;
+            tagItem.appendChild(tag);
+            tagItem.appendChild(labelText);
+            //绑定选择项目事件
+            tagItem.addEventListener('click', function (e) {
+                _self.changeItem(this, config);
+            });
+            container.appendChild(tagItem);
+        };
+        //销毁项目控件
+        ChartPrototype.prototype.destoryTagItem = function (container, label) {
+            var targetEle = null;
+            [].slice.call(container.children).map(function (tag) {
+                if (tag.querySelector('.label').innerHTML === label) {
+                    targetEle = tag;
+                }
+            });
+            targetEle && container.removeChild(targetEle);
+        };
+        //用作为图表添加标题，标签等
+        ChartPrototype.prototype.addCondition = function (container, config) {
+            var _this = this;
+            var title = document.createElement('h2'),
+                canvas = document.createElement('canvas'),
+                tagCon = document.createElement('ul'),
+                comment = document.createElement('div');
+            container.classList.add('chartUp-container');
+            comment.classList.add('comment');
+            title.innerHTML = config.title ? config.title : '';
+            comment.innerHTML = config.comment ? config.comment : '';
+            tagCon.classList.add('tag-con');
+            config.items.map(function (item) {
+                _this.createTagItem(tagCon, item, config);
+            });
+            container.appendChild(title);
+            container.appendChild(comment);
+            container.appendChild(canvas);
+            container.appendChild(tagCon);
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+            config.canvas = canvas;
+            config.tagCon = tagCon;
+            //获取canvas绘制布的宽高
+            config.canvasWidth = canvas.offsetWidth;
+            config.canvasHeight = canvas.offsetHeight;
+            return canvas.getContext('2d');
+        };
+        ChartPrototype.prototype.config = function (c) {
+            this.configuration = Object.assign(this.configuration, c);
+        };
+        /*
+        * @extend: 扩展方法
+        * @parameter: chartConfig
+        *
+        * 包含:
+        * 1.chartType: 用作定义扩展图表的名称
+        * 2.chartConfig: 定义扩展图表具体类的实例
+        */
+        ChartPrototype.prototype.extend = function (chartConfig) {
+            if (!chartConfig.chartType) {
+                console.warn("'chartType' option is required.");
+                return false;
+            }
+            if (!chartConfig.chartClass) {
+                console.warn("'chartClass' option is required.");
+                return false;
+            }
+            this[chartConfig.chartType] = function (container, config) {
+                var Graphics = this.addCondition(document.querySelector(container), config);
+                //图表类型
+                config.chartType = chartConfig.chartType;
+                config.itemList = config.items.map(function (item) {
+                    return item.label;
+                });
+                //保存图表实例
+                config.chartIntance = new chartConfig.chartClass(Graphics, config).render(config.itemList);
+                return config.chartIntance;
+            };
+        };
+        return ChartPrototype;
+    }();
+    //实例化Chart
+    var ChartUp = new ChartPrototype();
     /*--------------------工具方法---------------------*/
     /*
     * @DrawLine: 对canvas路径api的一个封装
@@ -539,6 +676,66 @@ var ChartUp = function (window) {
         return DrawRadarSystem;
     }();
     /*
+    * @DrawRadarSystem: 绘制极地坐标系
+    */
+    var DrawPolarSystem = /** @class */function () {
+        function DrawPolarSystem(g, config, items) {
+            this.g = null;
+            this.config = null;
+            this.items = null;
+            this.oX = 0;
+            this.oY = 0;
+            //极地坐标的虚拟值
+            this.edge = 0;
+            this.max = 0;
+            this.count = 0;
+            this.g = g;
+            this.config = config;
+            this.items = items;
+            this.oX = this.config.canvasWidth / 2;
+            this.oY = this.config.canvasHeight / 2;
+            this.max = this.getMax(this.items);
+            this.count = Math.floor(this.max / this.config.interval) + 2;
+            this.edge = this.count * this.config.interval;
+        }
+        DrawPolarSystem.prototype.getMax = function (items) {
+            return items.length ? _MAX(items.map(function (item) {
+                return item.value;
+            })) : 60;
+        };
+        DrawPolarSystem.prototype.drawPolarNet = function () {
+            var radius = 0;
+            for (var i = 0; i < this.count; i++) {
+                radius = (this.edge - i * this.config.interval) * this.config.defaultRadius / this.edge;
+                new _DrawArc(this.g, radius, 360, false).render(this.oX, this.oY, '#ddd');
+            }
+            return this;
+        };
+        DrawPolarSystem.prototype.drawText = function () {
+            var radius = 0;
+            this.g.save();
+            this.g.font = '12px serif';
+            for (var i = 0; i < this.count; i++) {
+                this.g.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                radius = (this.edge - i * this.config.interval) * this.config.defaultRadius / this.edge;
+                this.g.fillRect(this.oX - 15, this.oY - radius - 10, 30, 20);
+                this.g.fillStyle = '#666';
+                this.g.textAlign = 'center';
+                this.g.textBaseline = 'middle';
+                this.g.fillText(this.edge - i * this.config.interval, this.oX, this.oY - radius);
+            }
+            this.g.restore();
+            return this;
+        };
+        DrawPolarSystem.prototype.calc = function (v) {
+            return v * this.config.defaultRadius / this.edge;
+        };
+        DrawPolarSystem.prototype.render = function () {
+            this.drawPolarNet().drawText();
+        };
+        return DrawPolarSystem;
+    }();
+    /*
     * @Animate: canvas动绘制的一个封装
     */
     var _Animate = function _Animate() {};
@@ -555,12 +752,23 @@ var ChartUp = function (window) {
             this.items = [];
             this.coordinateSystem = null;
             this.radarSystem = null;
+            this.polarSystem = null;
             this.g = Graphics;
             this.config = config;
             if (!this.config.items) {
                 console.warn("'items' option is required.");
                 return null;
             }
+            if (this.config.chartType !== 'PieChart' && this.config.chartType !== 'AnnularChart') {
+                if (this.config.interval === undefined) {
+                    console.warn("'interval' option is required.");
+                    return null;
+                }
+            }
+            //默认开启网格
+            this.config.grid = this.config.grid === undefined ? true : this.config.grid;
+            //默认开启测量线
+            this.config.measureLine = this.config.measureLine === undefined ? true : this.config.measureLine;
             //绑定鼠标事件
             this.bindMouseEvent();
             this.indexItem(this.config.items);
@@ -647,6 +855,9 @@ var ChartUp = function (window) {
             if (this.radarSystem) {
                 this.radarSystem = new DrawRadarSystem(this.g, this.config, this.items);
             }
+            if (this.polarSystem) {
+                this.polarSystem = new DrawPolarSystem(this.g, this.config, this.items);
+            }
             if (this.config.chartType === 'PieChart' || this.config.chartType === 'AnnularChart') {
                 this.sortItem(this.items);
             }
@@ -671,11 +882,27 @@ var ChartUp = function (window) {
         };
         InitialChart.prototype.addItem = function (item) {
             this.config.items.push(item);
-            this.render();
+            this.config.itemList.push(item.label);
+            ChartUp.createTagItem(this.config.tagCon, item, this.config);
+            this.render(this.config.itemList);
         };
         ;
-        InitialChart.prototype.deleteItem = function (label) {};
-        InitialChart.prototype.setItem = function (label, value) {};
+        InitialChart.prototype.removeItem = function (label) {
+            var index = 0;
+            this.config.items.map(function (item, i) {
+                if (item.label === label) index = i;
+            });
+            this.config.items.splice(index, 1);
+            this.config.itemList.splice(this.config.itemList.indexOf(label), 1);
+            this.render(this.config.itemList);
+            ChartUp.destoryTagItem(this.config.tagCon, label);
+        };
+        InitialChart.prototype.setItem = function (label, value) {
+            this.config.items[this.config.items.map(function (item) {
+                return item.label;
+            }).indexOf(label)].value = value;
+            this.render(this.config.itemList);
+        };
         return InitialChart;
     }();
     /*
@@ -696,18 +923,7 @@ var ChartUp = function (window) {
             var _this = _super.call(this, Graphics, config) || this;
             //默认半径
             _this.defaultRadius = 3;
-            //默认间隔
-            _this.defaultInterval = 10;
             _this.coordinateSystem = true;
-            //默认开启网格
-            _this.config.grid = _this.config.grid === undefined ? true : _this.config.grid;
-            //默认开启测量线
-            _this.config.measureLine = _this.config.measureLine === undefined ? true : _this.config.measureLine;
-            //间隔和坐标点参数为必要参数
-            if (!_this.config.interval) {
-                console.warn("'interval' option is required.");
-                return null;
-            }
             //设置默认半径
             if (_this.config.defaultRadius) {
                 _this.defaultRadius = _this.config.defaultRadius;
@@ -1767,136 +1983,123 @@ var ChartUp = function (window) {
         ;
         return RadarChart;
     }(InitialChart);
-    var PolarChart = /** @class */function () {
-        function PolarChart() {}
-        return PolarChart;
-    }();
-    /*------------------------------图表类-END----------------------------------- */
-    /*---------------------------ChartUp主类------------------------------- */
-    var ChartPrototype = /** @class */function () {
-        //entrance
-        function ChartPrototype() {
-            //暴露的工具方法集
-            this.fn = {};
-            //version
-            this.version = '0.0.2';
-            //全局设置API
-            this.configuration = _Gconfig;
-            this.fn = {
-                //绘制线方法，返回DrawLine类的实例
-                drawLine: function drawLine(Graphics, x, y, color) {
-                    return new DrawLine(Graphics, x, y, color);
-                },
-                //绘制扇形方法，返回DrawArc类的实例
-                DrawArc: function DrawArc(Graphics, radius, angle, isSoild) {
-                    if (isSoild === void 0) {
-                        isSoild = true;
-                    }
-                    return new _DrawArc(Graphics, radius, angle, isSoild);
-                },
-                //绘制矩形方法，返回DrawRect类的实例
-                DrawRect: function DrawRect(Graphics, width, height, isFill) {
-                    if (isFill === void 0) {
-                        isFill = true;
-                    }
-                    return new _DrawRect(Graphics, width, height, true);
-                },
-                //动绘制方法
-                animate: _Animate
-            };
+    /*
+    * 新类型
+    * @PolarChart: 极地图表
+    */
+    var PolarChart = /** @class */function (_super) {
+        __extends(PolarChart, _super);
+        function PolarChart(Graphics, config) {
+            var _this = _super.call(this, Graphics, config) || this;
+            _this.defaultRadius = 250;
+            _this.polarSystem = true;
+            _this.margin = 3;
+            //设置默认半径
+            _this.defaultRadius = _this.config.defaultRadius === undefined ? _this.defaultRadius : _this.config.defaultRadius;
+            _this.config.defaultRadius = _this.defaultRadius;
+            return _this;
         }
-        ChartPrototype.prototype.changeItem = function (el, config) {
-            var label = el.getAttribute('data-item');
-            if (el.className.indexOf('active') > -1) {
-                el.classList.remove('active');
-                config.itemList.push(label);
-            } else {
-                el.classList.add('active');
-                config.itemList.splice(config.itemList.indexOf(label), 1);
+        //绘制雷达网
+        PolarChart.prototype.drawPolarNet = function () {
+            this.polarSystem.render();
+            return this;
+        };
+        //判断鼠标是否在圆内
+        PolarChart.prototype.isInCircle = function (x, y) {
+            this.g.beginPath();
+            this.g.arc(this.polarSystem.oX, this.polarSystem.oY, this.defaultRadius, 0, 2 * Math.PI);
+            return this.g.isPointInPath(x, y);
+        };
+        //绘制测量线
+        PolarChart.prototype.paintTargetLine = function (x, y) {
+            var radius = Math.sqrt(Math.abs(Math.pow(x - this.polarSystem.oX, 2) + Math.pow(y - this.polarSystem.oY, 2)));
+            if (this.isInCircle(x, y)) {
+                this.g.save();
+                this.g.setLineDash([4, 2]);
+                new _DrawArc(this.g, radius, 360, false).render(this.polarSystem.oX, this.polarSystem.oY, '#bbb');
+                new DrawLine(this.g, this.polarSystem.oX, this.polarSystem.oY, '#bbb').end(x, y);
+                this.g.restore();
             }
-            config.chartIntance.render(config.itemList);
+            return this;
         };
-        ChartPrototype.prototype.createTagItem = function (container, item, config) {
-            var tagItem = document.createElement('li'),
-                tag = document.createElement('span'),
-                labelText = document.createElement('span');
-            var _self = this;
-            tagItem.setAttribute('data-item', item.label);
-            tag.classList.add('tag');
-            tag.style.backgroundColor = item.color;
-            labelText.classList.add('label');
-            labelText.innerHTML = item.label;
-            tagItem.appendChild(tag);
-            tagItem.appendChild(labelText);
-            //绑定选择项目事件
-            tagItem.addEventListener('click', function (e) {
-                _self.changeItem(this, config);
-            });
-            container.appendChild(tagItem);
-        };
-        //用作为图表添加标题，标签等
-        ChartPrototype.prototype.addCondition = function (container, config) {
+        //鼠标选中项目效果处理
+        PolarChart.prototype.mouseSelect = function (data, x, y) {
             var _this = this;
-            var title = document.createElement('h2'),
-                canvas = document.createElement('canvas'),
-                tagCon = document.createElement('ul'),
-                comment = document.createElement('div');
-            container.classList.add('chartUp-container');
-            comment.classList.add('comment');
-            title.innerHTML = config.title ? config.title : '';
-            comment.innerHTML = config.comment ? config.comment : '';
-            tagCon.classList.add('tag-con');
-            config.items.map(function (item) {
-                _this.createTagItem(tagCon, item, config);
+            //标志符：用作判断鼠标是否移到了扇形里面
+            var flag = null,
+                angle = Math.PI * 2 / this.items.length;
+            this.g.save();
+            this.g.translate(this.polarSystem.oX, this.polarSystem.oY);
+            //this.g.globalAlpha = 0.5;
+            data.map(function (d, index) {
+                _this.g.fillStyle = d.color;
+                _this.g.rotate(angle);
+                _this.g.beginPath();
+                _this.g.moveTo(3, 3);
+                _this.g.arc(3, 3, d.ele.radius - _this.margin, 0, angle);
+                _this.g.closePath();
+                if (_this.g.isPointInPath(x, y)) {
+                    _this.g.fill();
+                    flag = d;
+                }
             });
-            container.appendChild(title);
-            container.appendChild(comment);
-            container.appendChild(canvas);
-            container.appendChild(tagCon);
-            canvas.width = canvas.offsetWidth;
-            canvas.height = canvas.offsetHeight;
-            config['canvas'] = canvas;
-            //获取canvas绘制布的宽高
-            config['canvasWidth'] = canvas.offsetWidth;
-            config['canvasHeight'] = canvas.offsetHeight;
-            return canvas.getContext('2d');
+            this.g.restore();
+            return flag;
         };
-        ChartPrototype.prototype.config = function (c) {
-            this.configuration = Object.assign(this.configuration, c);
+        ;
+        //浮动提示框
+        PolarChart.prototype.paintTipCase = function (x, y, flag) {
+            var radius = Math.sqrt(Math.abs(Math.pow(x - this.polarSystem.oX, 2) + Math.pow(y - this.polarSystem.oY, 2)));
+            this.g.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            this.g.font = '12px serif';
+            if (this.isInCircle(x, y)) {
+                if (flag) {
+                    this.g.fillRect(x + 15, y, 80, 50);
+                    this.g.font = '12px serif';
+                    this.g.fillStyle = '#fff';
+                    this.g.fillText("lable: " + flag.label, x + 20, y + 20);
+                    this.g.fillText("value: " + flag.ele.value, x + 20, y + 40);
+                } else {
+                    this.g.fillRect(x + 15, y, 50, 20);
+                    this.g.fillStyle = '#fff';
+                    this.g.fillText((radius * this.polarSystem.edge / this.defaultRadius).toFixed(2), x + 20, y + 15);
+                }
+            }
+            return this;
         };
-        /*
-        * @extend: 扩展方法
-        * @parameter: chartConfig
-        *
-        * 包含:
-        * 1.chartType: 用作定义扩展图表的名称
-        * 2.chartConfig: 定义扩展图表具体类的实例
-        */
-        ChartPrototype.prototype.extend = function (chartConfig) {
-            if (!chartConfig.chartType) {
-                console.warn("'chartType' option is required.");
-                return false;
-            }
-            if (!chartConfig.chartClass) {
-                console.warn("'chartClass' option is required.");
-                return false;
-            }
-            this[chartConfig.chartType] = function (container, config) {
-                var Graphics = this.addCondition(document.querySelector(container), config);
-                //图表类型
-                config.chartType = chartConfig.chartType;
-                config.itemList = config.items.map(function (item) {
-                    return item.label;
-                });
-                //保存图表实例
-                config.chartIntance = new chartConfig.chartClass(Graphics, config).render(config.itemList);
-                return config.chartIntance;
+        ;
+        PolarChart.prototype.reRender = function (x, y) {
+            this.g.save();
+            //绘制图表结果
+            this.drawPolarNet().renderResult(this.data).paintTargetLine(x, y).paintTipCase(x, y, this.mouseSelect(this.data, x, y));
+            this.g.restore();
+        };
+        ;
+        PolarChart.prototype.analyseItems = function (item) {
+            return {
+                radius: this.polarSystem.calc(item.value),
+                value: item.value
             };
         };
-        return ChartPrototype;
-    }();
-    //实例化Chart
-    var ChartUp = new ChartPrototype();
+        PolarChart.prototype.renderResult = function (data) {
+            var _this = this;
+            var angle = Math.PI * 2 / this.items.length,
+                pi2 = Math.PI / 2,
+                x = 0,
+                y = 0;
+            this.g.save();
+            this.g.translate(this.polarSystem.oX, this.polarSystem.oY);
+            this.g.globalAlpha = 0.5;
+            data.map(function (r, i) {
+                _this.g.rotate(angle);
+                new _DrawArc(_this.g, r.ele.radius - _this.margin, 360 / _this.items.length).render(3, 3, r.color);
+            });
+            this.g.restore();
+            return this;
+        };
+        return PolarChart;
+    }(InitialChart);
+    /*------------------------------图表类-END----------------------------------- */
     //扩展: 基础图表
     ChartUp.extend({
         chartType: 'BaseChart',
@@ -1932,10 +2135,15 @@ var ChartUp = function (window) {
         chartType: 'AnnularChart',
         chartClass: AnnularChart
     });
-    //扩展: 环形图表
+    //扩展: 雷达图表
     ChartUp.extend({
         chartType: 'RadarChart',
         chartClass: RadarChart
+    });
+    //扩展: 极地图表
+    ChartUp.extend({
+        chartType: 'PolarChart',
+        chartClass: PolarChart
     });
     window['Chart'] = ChartUp;
     return ChartUp;

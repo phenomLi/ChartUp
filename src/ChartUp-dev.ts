@@ -39,7 +39,7 @@ interface chartModule {
 	* @parameter:
 	* label: string，定义了用户想要在图表中删除的项目
 	*/
-	deleteItem(label: string | number);
+	removeItem(label: string | number);
 
 	//修改项目
 	/*
@@ -83,6 +83,189 @@ const _MIN = function(arr) {
 const _SUM = function(arr) {
 	return arr.length? arr.reduce((prev, cur, index, arr) => prev + cur): 0;
 }
+
+
+
+
+
+
+
+
+/*---------------------------ChartUp主类------------------------------- */
+
+
+class ChartPrototype {
+	
+  //暴露的工具方法集
+  public fn: object = {};
+
+  //version
+  public version = '0.0.2';
+
+  //全局设置API
+  private configuration = _Gconfig;
+  
+  //entrance
+  constructor() {
+	  this.fn = {
+		  //绘制线方法，返回DrawLine类的实例
+		  drawLine(Graphics: object, x: number, y: number, color?: string): DrawLine {
+			  return new DrawLine(Graphics, x, y, color);
+		  },
+
+		  //绘制扇形方法，返回DrawArc类的实例
+		  DrawArc(Graphics: object, radius: number, angle: number, isSoild = true): DrawArc {
+			  return new DrawArc(Graphics, radius, angle, isSoild);
+		  },
+
+		  //绘制矩形方法，返回DrawRect类的实例
+		  DrawRect(Graphics: object, width: number, height: number, isFill: boolean = true): DrawRect {
+			  return new DrawRect(Graphics, width, height, true);
+		  },
+
+		  //动绘制方法
+		  animate: _Animate
+	  }
+  }
+
+  private changeItem(el: HTMLElement, config) {
+	  const label = el.getAttribute('data-item');
+
+	  if(el.className.indexOf('active') > -1) {
+		  el.classList.remove('active');
+		  config.itemList.push(label);
+	  }
+	  else {
+		  el.classList.add('active');
+		  config.itemList.splice(config.itemList.indexOf(label), 1);
+	  }
+
+	  config.chartIntance.render(config.itemList);
+  }
+
+  //创建项目控件
+  public createTagItem(container: HTMLElement, item, config) {
+	  const tagItem = document.createElement('li'),
+			tag = document.createElement('span'),
+			labelText = document.createElement('span');
+
+	  const _self = this;
+
+	  tagItem.setAttribute('data-item', item.label);	
+	  
+	  tag.classList.add('tag');
+	  tag.style.backgroundColor = item.color;
+	  labelText.classList.add('label');
+  
+	  labelText.innerHTML = item.label;
+
+	  tagItem.appendChild(tag);
+	  tagItem.appendChild(labelText);
+	  
+	  //绑定选择项目事件
+	  tagItem.addEventListener('click', function(e) {
+		  _self.changeItem(this, config);
+	  });
+
+	  container.appendChild(tagItem);
+  }
+
+  //销毁项目控件
+  public destoryTagItem(container: HTMLElement, label: string | number) {
+	  let targetEle: HTMLElement = null;
+
+	  [].slice.call(container.children).map(tag => {
+
+	      if(tag.querySelector('.label').innerHTML === label) {
+			  targetEle = tag;
+		  }	
+	  });
+
+      targetEle && container.removeChild(targetEle);
+  }
+
+  //用作为图表添加标题，标签等
+  private addCondition(container: HTMLElement, config) {
+	  const title = document.createElement('h2'),
+			canvas = document.createElement('canvas'),
+			tagCon = document.createElement('ul'),
+			comment = document.createElement('div');
+
+	  container.classList.add('chartUp-container');
+	  comment.classList.add('comment');
+
+	  title.innerHTML = config.title? config.title: '';
+	  comment.innerHTML = config.comment? config.comment: '';
+
+	  tagCon.classList.add('tag-con');
+
+	  config.items.map(item => {
+		  this.createTagItem(tagCon, item, config);
+	  });
+	  
+	  container.appendChild(title);
+	  container.appendChild(comment);
+	  container.appendChild(canvas);
+	  container.appendChild(tagCon);
+
+	  canvas.width = canvas.offsetWidth;
+	  canvas.height = canvas.offsetHeight;
+
+	  config.canvas = canvas;	
+	  config.tagCon = tagCon;
+	  
+	  //获取canvas绘制布的宽高
+	  config.canvasWidth = canvas.offsetWidth;
+	  config.canvasHeight = canvas.offsetHeight;
+
+	  return canvas.getContext('2d');
+  }
+
+
+  config(c) {
+	  this.configuration = Object.assign(this.configuration, c);
+  }
+
+
+  /*
+  * @extend: 扩展方法
+  * @parameter: chartConfig
+  *
+  * 包含: 
+  * 1.chartType: 用作定义扩展图表的名称
+  * 2.chartConfig: 定义扩展图表具体类的实例
+  */
+
+  extend(chartConfig): void | boolean {
+	  if(!chartConfig.chartType) {
+		  console.warn("'chartType' option is required.");
+		  return false;
+	  }
+	  
+	  if(!chartConfig.chartClass) {
+		  console.warn("'chartClass' option is required.");
+		  return false;
+	  }
+	  
+	  this[chartConfig.chartType] = function(container: string, config) {
+
+		  const Graphics = this.addCondition(document.querySelector(container), config);
+
+		  //图表类型
+		  config.chartType = chartConfig.chartType;
+		  config.itemList = config.items.map(item => item.label);
+
+		  //保存图表实例
+		  config.chartIntance = new chartConfig.chartClass(Graphics, config).render(config.itemList);
+
+		  return config.chartIntance;
+	  }
+	  
+  }
+}
+
+//实例化Chart
+const ChartUp = new ChartPrototype();
 
 
 /*--------------------工具方法---------------------*/
@@ -731,6 +914,80 @@ class DrawRadarSystem {
 }
 
 
+/*
+* @DrawRadarSystem: 绘制极地坐标系
+*/
+
+class DrawPolarSystem {
+	private g = null;
+	private config = null;
+	private items = null;
+
+	public oX: number = 0;
+	public oY: number = 0;
+
+	//极地坐标的虚拟值
+	public edge: number = 0;
+	private max: number = 0;
+	private count: number = 0;
+
+	constructor(g, config, items) {
+		this.g = g;
+		this.config = config;
+		this.items = items;
+
+		this.oX = this.config.canvasWidth/2;
+		this.oY = this.config.canvasHeight/2;
+
+		this.max = this.getMax(this.items);
+		this.count = Math.floor(this.max/this.config.interval) + 2;
+		this.edge = this.count*this.config.interval;
+	}
+
+	private getMax(items): number {
+		return items.length? _MAX(items.map(item => item.value)): 60;
+	}
+
+	private drawPolarNet() {
+		let radius: number = 0;
+
+		for(let i = 0; i < this.count; i ++) {
+			radius = ((this.edge - i*this.config.interval)*this.config.defaultRadius)/this.edge;
+			new DrawArc(this.g, radius, 360, false).render(this.oX, this.oY, '#ddd');
+		}
+
+		return this;
+	}
+
+	private drawText() {
+		let radius: number = 0;
+
+		this.g.save();
+		this.g.font = '12px serif';
+			
+		for(let i = 0; i < this.count; i ++) {
+			this.g.fillStyle = 'rgba(255, 255, 255, 0.5)';
+			radius = ((this.edge - i*this.config.interval)*this.config.defaultRadius)/this.edge;
+			this.g.fillRect(this.oX - 15, this.oY - radius - 10, 30, 20);
+			this.g.fillStyle = '#666';
+			this.g.textAlign = 'center';
+			this.g.textBaseline = 'middle';
+			this.g.fillText(this.edge - i*this.config.interval, this.oX, this.oY - radius)
+		}
+
+		this.g.restore();
+
+		return this;	
+	}
+
+	public calc(v: number): number {
+		return (v*this.config.defaultRadius)/this.edge;
+	}
+
+	public render() {
+		this.drawPolarNet().drawText();
+	}
+}
 
 
 /*
@@ -762,6 +1019,7 @@ class InitialChart implements chartModule {
 
 	protected coordinateSystem = null;
 	protected radarSystem = null;
+	protected polarSystem = null;
 
 	constructor(Graphics, config) {
 		this.g = Graphics;
@@ -771,6 +1029,19 @@ class InitialChart implements chartModule {
 			console.warn("'items' option is required.");
 			return null;
 		}
+
+		if(this.config.chartType !== 'PieChart' && this.config.chartType !== 'AnnularChart') {
+			if(this.config.interval === undefined) {
+				console.warn("'interval' option is required.");
+				return null;
+			}
+		}
+
+		//默认开启网格
+		this.config.grid = this.config.grid === undefined? true: this.config.grid;
+		
+		//默认开启测量线
+		this.config.measureLine = this.config.measureLine === undefined? true: this.config.measureLine;
 
 		//绑定鼠标事件
 		this.bindMouseEvent();
@@ -871,6 +1142,10 @@ class InitialChart implements chartModule {
 			this.radarSystem = new DrawRadarSystem(this.g, this.config, this.items);
 		}
 
+		if(this.polarSystem) {
+			this.polarSystem = new DrawPolarSystem(this.g, this.config, this.items);
+		}
+
 		if(this.config.chartType === 'PieChart' || this.config.chartType === 'AnnularChart') {
 			this.sortItem(this.items);
 		}
@@ -898,19 +1173,35 @@ class InitialChart implements chartModule {
 
 	addItem(item) {
 		this.config.items.push(item);
+		this.config.itemList.push(item.label);
 
-		this.render();
+		ChartUp.createTagItem(this.config.tagCon, item, this.config);
+
+		this.render(this.config.itemList);
 	};
 
-	deleteItem(label:string | number) {
+	removeItem(label:string | number) {
+		let index: number = 0;
 
+		this.config.items.map((item, i) => {
+			if(item.label === label) index = i;
+		});
+
+		this.config.items.splice(index, 1);
+
+		this.config.itemList.splice(this.config.itemList.indexOf(label), 1);
+
+		this.render(this.config.itemList);
+
+		ChartUp.destoryTagItem(this.config.tagCon, label);
 	}
 
 	setItem(label: string | number, value) {
+		this.config.items[this.config.items.map(item => item.label).indexOf(label)].value = value;
 
-	}
+		this.render(this.config.itemList);
+	}  
 }
-
 
 
 
@@ -932,26 +1223,12 @@ class BaseChart extends InitialChart {
 
 	//默认半径
 	protected defaultRadius = 3;
-	//默认间隔
-	protected defaultInterval: number = 10;
 
 	protected coordinateSystem: any = true;
 
     constructor(Graphics, config: object) {
         super(Graphics, config);
 		
-		//默认开启网格
-		this.config.grid = this.config.grid === undefined? true: this.config.grid;
-
-		//默认开启测量线
-		this.config.measureLine = this.config.measureLine === undefined? true: this.config.measureLine;
-
-		//间隔和坐标点参数为必要参数
-		if(!this.config.interval) {
-			console.warn("'interval' option is required.");
-			return null;
-		}
-
 		//设置默认半径
 		if(this.config.defaultRadius) {
 			this.defaultRadius = this.config.defaultRadius;
@@ -959,7 +1236,7 @@ class BaseChart extends InitialChart {
 
     }
 
-	reRender(x: number, y: number) {
+	protected reRender(x: number, y: number) {
 
 		this.g.save();
 
@@ -1032,7 +1309,7 @@ class BaseChart extends InitialChart {
 
 	
 	//鼠标选中元素处理
-	mouseSelect(circles, x: number, y: number) {
+	protected mouseSelect(circles, x: number, y: number) {
 		//标志符：用作判断鼠标是否移到了圆点里面
 		let flag: object = null;
 
@@ -1115,7 +1392,7 @@ class BaseChart extends InitialChart {
 	}
 
 	//绘制坐标提升框
-	paintTipCase(x: number, y: number, flag) {
+	protected paintTipCase(x: number, y: number, flag) {
 
 		const vx: number = this.coordinateSystem.xOrigin + (x - 45)*(this.coordinateSystem.xEdge - this.coordinateSystem.xOrigin)/(this.coordinateSystem.lX),
 		      vy: number = this.coordinateSystem.yOrigin + Math.abs((y - this.config.canvasHeight + 45))*(this.coordinateSystem.yEdge - this.coordinateSystem.yOrigin)/(this.coordinateSystem.lY)
@@ -1141,7 +1418,7 @@ class BaseChart extends InitialChart {
 
 
 	//分析点数据
-	analyseItems(item, index: number) {
+	protected analyseItems(item, index: number) {
 		let circleInfo = [];
 
 		if(typeof item.value === 'function') {
@@ -1201,7 +1478,7 @@ class BaseChart extends InitialChart {
 		line.end(p.x, p.y);
 	}
 
-    renderResult(data) {
+    protected renderResult(data) {
 		data.map(cir => {
 			if(typeof cir.ele === 'function') {
 				this.renderExpression(cir.ele, cir.color);
@@ -1260,7 +1537,7 @@ class PointChart extends BaseChart {
 
 
 	//分析点数据
-	analyseItems(item, index: number) {
+	protected analyseItems(item, index: number) {
 		const radiusList = this.getRadius(item.value.map(i => i[2])),
 			  circleInfo = [];
 		
@@ -1282,7 +1559,7 @@ class PointChart extends BaseChart {
 
 
 	//绘制点函数
-	renderResult(data) {
+	protected renderResult(data) {
 
 		this.g.save();
 		this.g.shadowOffsetX = 1;
@@ -1302,7 +1579,7 @@ class PointChart extends BaseChart {
 	}
 
 	//绘制坐标提升框
-	paintTipCase(x: number, y: number, flag) {
+	protected paintTipCase(x: number, y: number, flag) {
 
 		const vx: number = (x - 45)*(this.coordinateSystem.xEdge - this.coordinateSystem.xOrigin)/(this.coordinateSystem.lX),
 			  vy: number = Math.abs((y - this.config.canvasHeight + 45))*(this.coordinateSystem.yEdge - this.coordinateSystem.yOrigin)/(this.coordinateSystem.lY)
@@ -1367,7 +1644,7 @@ class AreaChart extends BaseChart {
 	}
 		
 
-	reRender(x: number, y: number) {
+	protected reRender(x: number, y: number) {
 		
 		this.g.save();
 
@@ -1401,7 +1678,7 @@ class AreaChart extends BaseChart {
 	}
 
 	//分析点数据
-	analyseItems(item, index: number) {
+	protected analyseItems(item, index: number) {
 
 		let circleInfo = [];
 
@@ -1422,7 +1699,7 @@ class AreaChart extends BaseChart {
 
 
 	//绘制坐标提升框
-	paintTipCase(x: number, y: number, flag) {
+	protected paintTipCase(x: number, y: number, flag) {
 	
 		let sum: number = 0;
 
@@ -1455,7 +1732,7 @@ class AreaChart extends BaseChart {
 
 
 	//鼠标选中元素处理
-	mouseSelect(data, x: number, y: number) {
+	protected mouseSelect(data, x: number, y: number) {
 		//标志符：用作判断鼠标是否移到了圆点里面
 		let flag: object = null;
 
@@ -1545,7 +1822,7 @@ class AreaChart extends BaseChart {
 		return this;
 	}
 
-	renderResult(data) {
+	protected renderResult(data) {
 
 		this.g.save();
 
@@ -1639,7 +1916,7 @@ class PillarChart extends AreaChart {
 
 
 	//分析点数据
-	analyseItems(item, index: number) {
+	protected analyseItems(item, index: number) {
 		let valueInfo = [];
 
 		this.interval = this.coordinateSystem.lX/this.length;
@@ -1663,7 +1940,7 @@ class PillarChart extends AreaChart {
 
 
 	//绘制坐标提升框
-	paintTipCase(x: number, y: number, flag) {
+	protected paintTipCase(x: number, y: number, flag) {
 		
 		if(x + 90 > this.coordinateSystem.rxEdge + 20) {
 			x = this.coordinateSystem.rxEdge - 70;
@@ -1689,7 +1966,7 @@ class PillarChart extends AreaChart {
 
 
 	//鼠标选中元素处理
-	mouseSelect(data, x: number, y: number) {
+	protected mouseSelect(data, x: number, y: number) {
 		//标志符：用作判断鼠标是否移到了圆点里面
 		let flag = {
 			data: [],
@@ -1749,7 +2026,7 @@ class PillarChart extends AreaChart {
 		return this;
 	}
 
-	renderResult(data) {
+	protected renderResult(data) {
 		data.map((rect, index) => {
 			rect.ele.map((v, i) => {
 				new DrawRect(this.g, v.width, v.height).render(v.x, v.y, rect.color);
@@ -1802,7 +2079,7 @@ class LineChart extends AreaChart {
 	}
 
 	//分析点数据
-	analyseItems(item, index: number) {
+	protected analyseItems(item, index: number) {
 		
 		let circleInfo = [];
 		this.interval = this.coordinateSystem.lX/(this.length + 1);
@@ -1824,7 +2101,7 @@ class LineChart extends AreaChart {
 
 	
 	//绘制坐标提升框
-	paintTipCase(x: number, y: number, flag) {
+	protected paintTipCase(x: number, y: number, flag) {
 
 		if(x + 90 > this.coordinateSystem.rxEdge + 20) {
 			x = this.coordinateSystem.rxEdge - 70;
@@ -1850,7 +2127,7 @@ class LineChart extends AreaChart {
 	}
 
 
-	renderResult(data) {
+	protected renderResult(data) {
 		let line = null,
 			cyc = new DrawArc(this.g, this.defaultRadius, 360);
 
@@ -1906,7 +2183,7 @@ class PieChart extends InitialChart {
 	
 
 	//数据分析函数，对用户输入的数据集进行分析运算
-	analyseItems(item, index: number) {
+	protected analyseItems(item, index: number) {
 
 		if(index === 0) {
 			//计算总和
@@ -1922,7 +2199,7 @@ class PieChart extends InitialChart {
 	
 
 	//结果渲染，将分析好的数据渲染出来
-	renderResult(data) {
+	protected renderResult(data) {
 		let cir = null,
 			startAngle: number = 0,
 			endAngle: number = 0;
@@ -1972,7 +2249,7 @@ class PieChart extends InitialChart {
 	}
 
 	//浮动提示框
-	paintTipCase(x: number, y: number, flag) {
+	protected paintTipCase(x: number, y: number, flag) {
 		if(this.isInCircle(x, y)) {
 			this.g.fillStyle = 'rgba(0, 0, 0, 0.5)';
 
@@ -1991,7 +2268,7 @@ class PieChart extends InitialChart {
 
 
 	//鼠标选中项目效果处理
-	mouseSelect(data, x: number, y: number) {
+	protected mouseSelect(data, x: number, y: number) {
 		//标志符：用作判断鼠标是否移到了圆点里面
 		let flag: object = null,
 			startAngle: number = 0,
@@ -2032,7 +2309,7 @@ class PieChart extends InitialChart {
 		return flag;
 	};
 
-	reRender(x: number, y: number) {
+	protected reRender(x: number, y: number) {
 		this.g.save();
 
 		//绘制图表结果
@@ -2075,7 +2352,7 @@ class AnnularChart extends PieChart {
 	}
 
 	//鼠标选中项目效果处理
-	mouseSelect(data, x: number, y: number) {
+	protected mouseSelect(data, x: number, y: number) {
 		//标志符：用作判断鼠标是否移到了圆点里面
 		let flag: object = null,
 			startAngle: number = 0,
@@ -2135,7 +2412,7 @@ class AnnularChart extends PieChart {
 	}
 
 	//浮动提示框
-	paintTipCase(x: number, y: number, flag) {
+	protected paintTipCase(x: number, y: number, flag) {
 
 		this.drawCenterCircle();
 
@@ -2220,7 +2497,7 @@ class RadarChart extends InitialChart {
 		return this;
 	}
 
-	analyseItems(item, index: number) {
+	protected analyseItems(item, index: number) {
 		let valueList = [];
 
 		item.value.map((v, i) => {
@@ -2237,7 +2514,7 @@ class RadarChart extends InitialChart {
 	};
 	  
 
-	renderResult(data) {
+	protected renderResult(data) {
 		let line = null;
 
 		this.g.save();
@@ -2272,7 +2549,7 @@ class RadarChart extends InitialChart {
 
 
 	//浮动提示框
-	paintTipCase(x: number, y: number, flag) {
+	protected paintTipCase(x: number, y: number, flag) {
 		
 		this.g.fillStyle = 'rgba(0, 0, 0, 0.5)';
 
@@ -2292,7 +2569,7 @@ class RadarChart extends InitialChart {
 
 
 	//鼠标选中项目效果处理
-	mouseSelect(data, x: number, y: number) {
+	protected mouseSelect(data, x: number, y: number) {
 		//标志符：用作判断鼠标是否移到了圆点里面
 		let flag: object = null,
 			startAngle: number = 0,
@@ -2330,7 +2607,7 @@ class RadarChart extends InitialChart {
 	};
 
 
-	reRender(x: number, y: number) {
+	protected reRender(x: number, y: number) {
 		this.g.save();
 
 		//绘制图表结果
@@ -2346,9 +2623,154 @@ class RadarChart extends InitialChart {
 
 
 
+/*
+* 新类型
+* @PolarChart: 极地图表
+*/
+
+class PolarChart extends InitialChart {
+	private defaultRadius: number = 250;
+
+	protected polarSystem: any = true;
+	private margin = 3;
+
+	constructor(Graphics, config) {
+		super(Graphics, config);
+		
+		//设置默认半径
+		this.defaultRadius = this.config.defaultRadius === undefined? this.defaultRadius: this.config.defaultRadius;
+		this.config.defaultRadius = this.defaultRadius;
+	}
+
+	//绘制雷达网
+	private drawPolarNet() {
+		this.polarSystem.render();
+		return this;
+	}
+
+	//判断鼠标是否在圆内
+	private isInCircle(x: number, y: number) {
+		this.g.beginPath();
+		this.g.arc(this.polarSystem.oX, this.polarSystem.oY, this.defaultRadius, 0, 2*Math.PI);
+		return this.g.isPointInPath(x, y);
+	}
+
+	//绘制测量线
+	private paintTargetLine(x: number, y: number) {
+		const radius = Math.sqrt(Math.abs((Math.pow(x - this.polarSystem.oX, 2) + Math.pow(y - this.polarSystem.oY, 2))));
+
+		if(this.isInCircle(x, y)) {
+			this.g.save();
+			
+			this.g.setLineDash([4, 2]);
+			new DrawArc(this.g, radius, 360, false).render(this.polarSystem.oX, this.polarSystem.oY, '#bbb');
+			new DrawLine(this.g, this.polarSystem.oX, this.polarSystem.oY, '#bbb').end(x, y);
+	
+			this.g.restore();
+		}
+
+		return this;
+	}
 
 
-class PolarChart {
+	//鼠标选中项目效果处理
+	protected mouseSelect(data, x: number, y: number) {
+		//标志符：用作判断鼠标是否移到了扇形里面
+		let flag: object = null,
+			angle = Math.PI*2/this.items.length;
+		
+		this.g.save();
+
+		this.g.translate(this.polarSystem.oX, this.polarSystem.oY);
+		//this.g.globalAlpha = 0.5;
+
+		data.map((d, index) => {
+			this.g.fillStyle = d.color;
+			this.g.rotate(angle);
+
+			this.g.beginPath();
+			this.g.moveTo(3, 3);
+			this.g.arc(3, 3, d.ele.radius - this.margin, 0, angle);
+			this.g.closePath();
+
+			if(this.g.isPointInPath(x, y)) {
+				this.g.fill();
+				flag = d;
+			}
+		});
+		
+		this.g.restore();
+
+		return flag;
+	};
+
+
+	//浮动提示框
+	protected paintTipCase(x: number, y: number, flag) {
+		const radius = Math.sqrt(Math.abs((Math.pow(x - this.polarSystem.oX, 2) + Math.pow(y - this.polarSystem.oY, 2))));	
+
+		this.g.fillStyle = 'rgba(0, 0, 0, 0.5)';
+		this.g.font = '12px serif';
+
+		if(this.isInCircle(x, y)) {
+			if(flag) {
+				this.g.fillRect(x + 15, y, 80, 50);
+				this.g.font = '12px serif';
+				this.g.fillStyle = '#fff';
+				this.g.fillText(`lable: ${flag.label}`, x + 20, y + 20);
+				this.g.fillText(`value: ${flag.ele.value}`, x + 20, y + 40);
+			}
+			else {
+				this.g.fillRect(x + 15, y, 50, 20);
+				this.g.fillStyle = '#fff';
+				this.g.fillText(((radius*this.polarSystem.edge)/this.defaultRadius).toFixed(2), x + 20, y + 15);
+			}
+		}
+		
+		return this;
+	};
+
+
+	protected reRender(x: number, y: number) {
+		this.g.save();
+
+		//绘制图表结果
+		this
+			.drawPolarNet()
+			.renderResult(this.data)
+			.paintTargetLine(x, y)
+			.paintTipCase(x, y, this.mouseSelect(this.data, x, y));
+ 
+		this.g.restore();
+	};
+
+	protected analyseItems(item) {
+		return {
+			radius: this.polarSystem.calc(item.value),
+			value: item.value
+		};
+	}
+
+	protected renderResult(data) {
+		let angle: number = (Math.PI*2)/this.items.length,
+			pi2: number = Math.PI/2, 
+			x: number = 0,
+			y: number = 0;
+
+		this.g.save();
+
+		this.g.translate(this.polarSystem.oX, this.polarSystem.oY);
+		this.g.globalAlpha = 0.5;
+
+		data.map((r, i) => {
+			this.g.rotate(angle);
+			new DrawArc(this.g, r.ele.radius - this.margin, 360/this.items.length).render(3, 3, r.color);
+		});
+
+		this.g.restore();
+
+		return this;
+	}
 
 }
 
@@ -2357,165 +2779,7 @@ class PolarChart {
 
 
 
-/*---------------------------ChartUp主类------------------------------- */
 
-
-class ChartPrototype {
-      
-	//暴露的工具方法集
-	public fn: object = {};
-
-	//version
-	public version = '0.0.2';
-
-	//全局设置API
-	private configuration = _Gconfig;
-	
-	//entrance
-	constructor() {
-		this.fn = {
-			//绘制线方法，返回DrawLine类的实例
-			drawLine(Graphics: object, x: number, y: number, color?: string): DrawLine {
-				return new DrawLine(Graphics, x, y, color);
-			},
-
-			//绘制扇形方法，返回DrawArc类的实例
-			DrawArc(Graphics: object, radius: number, angle: number, isSoild = true): DrawArc {
-				return new DrawArc(Graphics, radius, angle, isSoild);
-			},
-
-			//绘制矩形方法，返回DrawRect类的实例
-			DrawRect(Graphics: object, width: number, height: number, isFill: boolean = true): DrawRect {
-				return new DrawRect(Graphics, width, height, true);
-			},
-
-			//动绘制方法
-			animate: _Animate
-		}
-	}
-
-	private changeItem(el: HTMLElement, config) {
-		const label = el.getAttribute('data-item');
-
-		if(el.className.indexOf('active') > -1) {
-			el.classList.remove('active');
-			config.itemList.push(label);
-		}
-		else {
-			el.classList.add('active');
-			config.itemList.splice(config.itemList.indexOf(label), 1);
-		}
-
-		config.chartIntance.render(config.itemList);
-	}
-
-	public createTagItem(container: HTMLElement, item, config) {
-		const tagItem = document.createElement('li'),
-			  tag = document.createElement('span'),
-			  labelText = document.createElement('span');
-
-		const _self = this;
-
-		tagItem.setAttribute('data-item', item.label);	
-		
-		tag.classList.add('tag');
-		tag.style.backgroundColor = item.color;
-		labelText.classList.add('label');
-	
-		labelText.innerHTML = item.label;
-
-		tagItem.appendChild(tag);
-		tagItem.appendChild(labelText);
-		
-		//绑定选择项目事件
-		tagItem.addEventListener('click', function(e) {
-			_self.changeItem(this, config);
-		});
-
-		container.appendChild(tagItem);
-	}
-
-	//用作为图表添加标题，标签等
-	private addCondition(container: HTMLElement, config) {
-		const title = document.createElement('h2'),
-			  canvas = document.createElement('canvas'),
-			  tagCon = document.createElement('ul'),
-			  comment = document.createElement('div');
-
-		container.classList.add('chartUp-container');
-		comment.classList.add('comment');
-
-		title.innerHTML = config.title? config.title: '';
-		comment.innerHTML = config.comment? config.comment: '';
-
-		tagCon.classList.add('tag-con');
-
-		config.items.map(item => {
-			this.createTagItem(tagCon, item, config);
-		});
-		
-		container.appendChild(title);
-		container.appendChild(comment);
-		container.appendChild(canvas);
-		container.appendChild(tagCon);
-
-		canvas.width = canvas.offsetWidth;
-		canvas.height = canvas.offsetHeight;
-
-		config['canvas'] = canvas;	
-		
-		//获取canvas绘制布的宽高
-		config['canvasWidth'] = canvas.offsetWidth;
-		config['canvasHeight'] = canvas.offsetHeight;
-
-		return canvas.getContext('2d');
-	}
-
-
-	config(c) {
-		this.configuration = Object.assign(this.configuration, c);
-	}
-
-
-	/*
-	* @extend: 扩展方法
-	* @parameter: chartConfig
-	*
-	* 包含: 
-	* 1.chartType: 用作定义扩展图表的名称
-	* 2.chartConfig: 定义扩展图表具体类的实例
-	*/
-
-	extend(chartConfig): void | boolean {
-		if(!chartConfig.chartType) {
-			console.warn("'chartType' option is required.");
-			return false;
-		}
-		
-		if(!chartConfig.chartClass) {
-			console.warn("'chartClass' option is required.");
-			return false;
-		}
-		
-		this[chartConfig.chartType] = function(container: string, config) {
-
-			const Graphics = this.addCondition(document.querySelector(container), config);
-
-			//图表类型
-			config.chartType = chartConfig.chartType;
-			config.itemList = config.items.map(item => item.label);
-
-			//保存图表实例
-			config.chartIntance = new chartConfig.chartClass(Graphics, config).render(config.itemList);
-
-			return config.chartIntance;
-		}
-		
-	}
-}
-
-//实例化Chart
-const ChartUp = new ChartPrototype();
 
 
 //扩展: 基础图表
@@ -2562,12 +2826,18 @@ ChartUp.extend({
 });
 
 
-//扩展: 环形图表
+//扩展: 雷达图表
 ChartUp.extend({
 	chartType: 'RadarChart',
 	chartClass: RadarChart
 });
 
+
+//扩展: 极地图表
+ChartUp.extend({
+	chartType: 'PolarChart',
+	chartClass: PolarChart
+});
 
 
 
