@@ -58,8 +58,8 @@ const _Gconfig = {
 	defaultColor: '#000',
 	//所有直角坐标图表默认边界
 	edge: [20, 20],
-	//所有图表默认坐标间隔
-	interval: 10
+	
+	showLabel: true
 };
 
 //角度转弧度制
@@ -145,6 +145,11 @@ class ChartPrototype {
 
   //创建项目控件
   public createTagItem(container: HTMLElement, item, config) {
+
+	  if(!_Gconfig.showLabel) {
+		  return false;
+	  } 	
+
 	  const tagItem = document.createElement('li'),
 			tag = document.createElement('span'),
 			labelText = document.createElement('span');
@@ -517,7 +522,7 @@ class DrawCoordinateSystem {
 		this.oY = this.config.canvasHeight - this.margin;
 
 		this.lX = this.config.canvasWidth - this.oX - 20 - this.margin;
-		this.lY = this.oY - this.margin - 20;
+		this.lY = this.oY - 20;
 
 		this.rxEdge = this.oX + this.lX;
 		this.ryEdge = this.oY - this.lY;
@@ -595,7 +600,7 @@ class DrawCoordinateSystem {
 	}
 
 	private rightAngle() {
-		new DrawLine(this.g, this.margin, this.margin)
+		new DrawLine(this.g, this.margin, 0)
 			.next(this.oX, this.oY)
 			.end(this.config.canvasWidth - this.margin, this.oY);
 
@@ -851,7 +856,7 @@ class DrawRadarSystem {
 	//绘制指标文字
 	private drawText() {
 
-		const margin: number = 35;
+		const margin: number = 20;
 
 		this.g.save();
 		this.g.textAlign = 'center';
@@ -1562,10 +1567,7 @@ class PointChart extends BaseChart {
 	protected renderResult(data) {
 
 		this.g.save();
-		this.g.shadowOffsetX = 1;
-		this.g.shadowOffsetY = 1;
-		this.g.shadowBlur = 2;
-		this.g.shadowColor = "rgba(0, 0, 0, 0.5)";
+		this.g.globalAlpha = 0.8;
 
 		data.map(cir => {
 			cir.ele.map(c => {
@@ -2206,6 +2208,8 @@ class PieChart extends InitialChart {
 
 		this.g.save();
 
+		this.g.globalAlpha = 0.8;
+
 		data.map(pie => {
 			if(!cir) {
 				cir = new DrawArc(this.g, this.config.radius, pie.ele.angle)
@@ -2463,7 +2467,7 @@ class RadarChart extends InitialChart {
 		}
 
 		//设置默认半径
-		this.defaultRadius = this.config.defaultRadius === undefined? this.defaultRadius: this.config.defaultRadius;
+		this.defaultRadius = this.config.radius === undefined? this.defaultRadius: this.config.radius;
 		this.config.defaultRadius = this.defaultRadius;
 
 		this.length = this.config.index.length;
@@ -2638,7 +2642,7 @@ class PolarChart extends InitialChart {
 		super(Graphics, config);
 		
 		//设置默认半径
-		this.defaultRadius = this.config.defaultRadius === undefined? this.defaultRadius: this.config.defaultRadius;
+		this.defaultRadius = this.config.radius === undefined? this.defaultRadius: this.config.radius;
 		this.config.defaultRadius = this.defaultRadius;
 	}
 
@@ -2682,7 +2686,6 @@ class PolarChart extends InitialChart {
 		this.g.save();
 
 		this.g.translate(this.polarSystem.oX, this.polarSystem.oY);
-		//this.g.globalAlpha = 0.5;
 
 		data.map((d, index) => {
 			this.g.fillStyle = d.color;
@@ -2690,7 +2693,7 @@ class PolarChart extends InitialChart {
 
 			this.g.beginPath();
 			this.g.moveTo(3, 3);
-			this.g.arc(3, 3, d.ele.radius - this.margin, 0, angle);
+			this.g.arc(3, 3, Math.abs(d.ele.radius - this.margin), 0, angle);
 			this.g.closePath();
 
 			if(this.g.isPointInPath(x, y)) {
@@ -2754,8 +2757,8 @@ class PolarChart extends InitialChart {
 	protected renderResult(data) {
 		let angle: number = (Math.PI*2)/this.items.length,
 			pi2: number = Math.PI/2, 
-			x: number = 0,
-			y: number = 0;
+			x: number = this.margin,
+			y: number = this.margin;
 
 		this.g.save();
 
@@ -2764,7 +2767,7 @@ class PolarChart extends InitialChart {
 
 		data.map((r, i) => {
 			this.g.rotate(angle);
-			new DrawArc(this.g, r.ele.radius - this.margin, 360/this.items.length).render(3, 3, r.color);
+			new DrawArc(this.g, Math.abs(r.ele.radius - this.margin), 360/this.items.length).render(x, y, r.color);
 		});
 
 		this.g.restore();

@@ -33,8 +33,7 @@ var ChartUp = function (window) {
         defaultColor: '#000',
         //所有直角坐标图表默认边界
         edge: [20, 20],
-        //所有图表默认坐标间隔
-        interval: 10
+        showLabel: true
     };
     //角度转弧度制
     var _degree2Radian = function _degree2Radian(degree) {
@@ -100,6 +99,9 @@ var ChartUp = function (window) {
         };
         //创建项目控件
         ChartPrototype.prototype.createTagItem = function (container, item, config) {
+            if (!_Gconfig.showLabel) {
+                return false;
+            }
             var tagItem = document.createElement('li'),
                 tag = document.createElement('span'),
                 labelText = document.createElement('span');
@@ -374,7 +376,7 @@ var ChartUp = function (window) {
             this.oX = this.margin;
             this.oY = this.config.canvasHeight - this.margin;
             this.lX = this.config.canvasWidth - this.oX - 20 - this.margin;
-            this.lY = this.oY - this.margin - 20;
+            this.lY = this.oY - 20;
             this.rxEdge = this.oX + this.lX;
             this.ryEdge = this.oY - this.lY;
             this.xInterval = this.config.interval[0] ? this.config.interval[0] : 1, this.yInterval = this.config.interval[1] ? this.config.interval[1] : this.config.interval;
@@ -425,7 +427,7 @@ var ChartUp = function (window) {
             return this;
         };
         DrawCoordinateSystem.prototype.rightAngle = function () {
-            new DrawLine(this.g, this.margin, this.margin).next(this.oX, this.oY).end(this.config.canvasWidth - this.margin, this.oY);
+            new DrawLine(this.g, this.margin, 0).next(this.oX, this.oY).end(this.config.canvasWidth - this.margin, this.oY);
             return this;
         };
         DrawCoordinateSystem.prototype.setXIntervalPoint = function () {
@@ -630,7 +632,7 @@ var ChartUp = function (window) {
         //绘制指标文字
         DrawRadarSystem.prototype.drawText = function () {
             var _this = this;
-            var margin = 35;
+            var margin = 20;
             this.g.save();
             this.g.textAlign = 'center';
             this.angleList.map(function (a, i) {
@@ -1179,10 +1181,7 @@ var ChartUp = function (window) {
         PointChart.prototype.renderResult = function (data) {
             var _this = this;
             this.g.save();
-            this.g.shadowOffsetX = 1;
-            this.g.shadowOffsetY = 1;
-            this.g.shadowBlur = 2;
-            this.g.shadowColor = "rgba(0, 0, 0, 0.5)";
+            this.g.globalAlpha = 0.8;
             data.map(function (cir) {
                 cir.ele.map(function (c) {
                     new _DrawArc(_this.g, c.r, 360).render(c.x, c.y, cir.color);
@@ -1663,6 +1662,7 @@ var ChartUp = function (window) {
                 startAngle = 0,
                 endAngle = 0;
             this.g.save();
+            this.g.globalAlpha = 0.8;
             data.map(function (pie) {
                 if (!cir) {
                     cir = new _DrawArc(_this.g, _this.config.radius, pie.ele.angle).render(_this.centerPoint[0], _this.centerPoint[1], pie.color);
@@ -1862,7 +1862,7 @@ var ChartUp = function (window) {
                 return null;
             }
             //设置默认半径
-            _this.defaultRadius = _this.config.defaultRadius === undefined ? _this.defaultRadius : _this.config.defaultRadius;
+            _this.defaultRadius = _this.config.radius === undefined ? _this.defaultRadius : _this.config.radius;
             _this.config.defaultRadius = _this.defaultRadius;
             _this.length = _this.config.index.length;
             _this.config.centerX = _this.config.canvasWidth / 2;
@@ -1995,7 +1995,7 @@ var ChartUp = function (window) {
             _this.polarSystem = true;
             _this.margin = 3;
             //设置默认半径
-            _this.defaultRadius = _this.config.defaultRadius === undefined ? _this.defaultRadius : _this.config.defaultRadius;
+            _this.defaultRadius = _this.config.radius === undefined ? _this.defaultRadius : _this.config.radius;
             _this.config.defaultRadius = _this.defaultRadius;
             return _this;
         }
@@ -2030,13 +2030,12 @@ var ChartUp = function (window) {
                 angle = Math.PI * 2 / this.items.length;
             this.g.save();
             this.g.translate(this.polarSystem.oX, this.polarSystem.oY);
-            //this.g.globalAlpha = 0.5;
             data.map(function (d, index) {
                 _this.g.fillStyle = d.color;
                 _this.g.rotate(angle);
                 _this.g.beginPath();
                 _this.g.moveTo(3, 3);
-                _this.g.arc(3, 3, d.ele.radius - _this.margin, 0, angle);
+                _this.g.arc(3, 3, Math.abs(d.ele.radius - _this.margin), 0, angle);
                 _this.g.closePath();
                 if (_this.g.isPointInPath(x, y)) {
                     _this.g.fill();
@@ -2085,14 +2084,14 @@ var ChartUp = function (window) {
             var _this = this;
             var angle = Math.PI * 2 / this.items.length,
                 pi2 = Math.PI / 2,
-                x = 0,
-                y = 0;
+                x = this.margin,
+                y = this.margin;
             this.g.save();
             this.g.translate(this.polarSystem.oX, this.polarSystem.oY);
             this.g.globalAlpha = 0.5;
             data.map(function (r, i) {
                 _this.g.rotate(angle);
-                new _DrawArc(_this.g, r.ele.radius - _this.margin, 360 / _this.items.length).render(3, 3, r.color);
+                new _DrawArc(_this.g, Math.abs(r.ele.radius - _this.margin), 360 / _this.items.length).render(x, y, r.color);
             });
             this.g.restore();
             return this;
