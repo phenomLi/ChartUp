@@ -34,6 +34,7 @@
     list-style: none;
     padding: 0 30px 20px 30px;
     margin-top: 20px;
+    min-height: 80px;
 }
 
 .chartUp-container > .tag-con > li {

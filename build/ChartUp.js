@@ -122,11 +122,15 @@ var ChartUp = function (window) {
         //销毁项目控件
         ChartPrototype.prototype.destoryTagItem = function (container, label) {
             var targetEle = null;
-            [].slice.call(container.children).map(function (tag) {
-                if (tag.querySelector('.label').innerHTML === label) {
-                    targetEle = tag;
-                }
-            });
+            if (label) {
+                [].slice.call(container.children).map(function (tag) {
+                    if (tag.querySelector('.label').innerHTML === label) {
+                        targetEle = tag;
+                    }
+                });
+            } else {
+                targetEle = container.children[container.children.length - 1];
+            }
             targetEle && container.removeChild(targetEle);
         };
         //用作为图表添加标题，标签等
@@ -891,11 +895,24 @@ var ChartUp = function (window) {
         ;
         InitialChart.prototype.removeItem = function (label) {
             var index = 0;
-            this.config.items.map(function (item, i) {
-                if (item.label === label) index = i;
-            });
-            this.config.items.splice(index, 1);
-            this.config.itemList.splice(this.config.itemList.indexOf(label), 1);
+            if (!this.config.items.length) {
+                return false;
+            }
+            if (label) {
+                this.config.items.map(function (item, i) {
+                    if (item.label === label) index = i;
+                });
+                this.config.items.splice(index, 1);
+                if (this.config.itemList.indexOf(label) > -1) {
+                    this.config.itemList.splice(this.config.itemList.indexOf(label), 1);
+                }
+            } else {
+                var item = this.config.items.pop(),
+                    index_1 = this.config.itemList.indexOf(item.label);
+                if (index_1 > -1) {
+                    this.config.itemList.splice(index_1, 1);
+                }
+            }
             this.render(this.config.itemList);
             ChartUp.destoryTagItem(this.config.tagCon, label);
         };
@@ -1993,7 +2010,7 @@ var ChartUp = function (window) {
             var _this = _super.call(this, Graphics, config) || this;
             _this.defaultRadius = 250;
             _this.polarSystem = true;
-            _this.margin = 3;
+            _this.margin = 2;
             //设置默认半径
             _this.defaultRadius = _this.config.radius === undefined ? _this.defaultRadius : _this.config.radius;
             _this.config.defaultRadius = _this.defaultRadius;

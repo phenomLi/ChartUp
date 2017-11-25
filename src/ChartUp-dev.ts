@@ -177,14 +177,18 @@ class ChartPrototype {
 
   //销毁项目控件
   public destoryTagItem(container: HTMLElement, label: string | number) {
-	  let targetEle: HTMLElement = null;
+	  let targetEle = null;
 
-	  [].slice.call(container.children).map(tag => {
-
-	      if(tag.querySelector('.label').innerHTML === label) {
-			  targetEle = tag;
-		  }	
-	  });
+	  if(label) {
+		[].slice.call(container.children).map(tag => {
+			if(tag.querySelector('.label').innerHTML === label) {
+				targetEle = tag;
+			}	
+		});
+	  }
+	  else {
+		targetEle = container.children[container.children.length - 1];
+	  }
 
       targetEle && container.removeChild(targetEle);
   }
@@ -1188,13 +1192,30 @@ class InitialChart implements chartModule {
 	removeItem(label:string | number) {
 		let index: number = 0;
 
-		this.config.items.map((item, i) => {
-			if(item.label === label) index = i;
-		});
+		if(!this.config.items.length) {
+			return false;
+		}
 
-		this.config.items.splice(index, 1);
+		if(label) {
+			this.config.items.map((item, i) => {
+				if(item.label === label) index = i;
+			});
+	
+			this.config.items.splice(index, 1);
+			
+			if(this.config.itemList.indexOf(label) > -1) {
+				this.config.itemList.splice(this.config.itemList.indexOf(label), 1);
+			}
+			
+		}
+		else {
+			const item = this.config.items.pop(),
+				  index = this.config.itemList.indexOf(item.label);
 
-		this.config.itemList.splice(this.config.itemList.indexOf(label), 1);
+			if(index > -1) {
+				this.config.itemList.splice(index, 1);
+			}	  
+		}  
 
 		this.render(this.config.itemList);
 
@@ -2636,7 +2657,7 @@ class PolarChart extends InitialChart {
 	private defaultRadius: number = 250;
 
 	protected polarSystem: any = true;
-	private margin = 3;
+	private margin = 2;
 
 	constructor(Graphics, config) {
 		super(Graphics, config);
