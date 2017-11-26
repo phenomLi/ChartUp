@@ -182,7 +182,11 @@ var ChartUp = function (window) {
                 return false;
             }
             this[chartConfig.chartType] = function (container, config) {
-                var Graphics = this.addCondition(document.querySelector(container), config);
+                var con = document.querySelector(container);
+                if (!con) {
+                    return false;
+                }
+                var Graphics = this.addCondition(con, config);
                 //图表类型
                 config.chartType = chartConfig.chartType;
                 config.itemList = config.items.map(function (item) {

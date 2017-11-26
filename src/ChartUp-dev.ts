@@ -8,7 +8,7 @@
 
 
 
-
+  
 // ------------ MAIN ------------ //
 
 
@@ -257,8 +257,13 @@ class ChartPrototype {
 	  }
 	  
 	  this[chartConfig.chartType] = function(container: string, config) {
+		  const con = document.querySelector(container);
 
-		  const Graphics = this.addCondition(document.querySelector(container), config);
+		  if(!con) {
+			  return false;
+		  }
+
+		  const Graphics = this.addCondition(con, config);
 
 		  //图表类型
 		  config.chartType = chartConfig.chartType;
