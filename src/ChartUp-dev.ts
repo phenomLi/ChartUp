@@ -20,12 +20,15 @@ const ChartUp = (function(window) {
 //图表类的统一接口，每当扩展一个新的图表类时，都必须实现这个接口
 interface chartModule {
 	
+	//初始化一个图表
+	init(itemList);
+
 	//主入口，图表渲染的开始，并且决定了图表要显示的项目
 	/*
 	* @parameter:
 	* itemList: Array，定义了用户想要在图表中显示的项目，若itemList为null或者undefined，则默认被认为显示全部项目
 	*/
-	render(itemList: string[]);
+	setRenderOption(itemList: string[]);
 
 	//增加项目
 	/*
@@ -99,6 +102,8 @@ class ChartPrototype {
   //暴露的工具方法集
   public fn: object = {};
 
+  private tempValue = [];
+
   //version
   public version = '0.0.2';
 
@@ -129,18 +134,49 @@ class ChartPrototype {
   }
 
   private changeItem(el: HTMLElement, config) {
-	  const label = el.getAttribute('data-item');
+	  let label = el.getAttribute('data-item'),
+		  ritem = null,
+		  index: number = 0;
 
+		config.items.map((item, i) => {
+			if(item.label === label) {
+				index = i;
+				ritem = item;
+			}
+		});
+
+	  //显示	  
 	  if(el.className.indexOf('active') > -1) {
+			
 		  el.classList.remove('active');
 		  config.itemList.push(label);
-	  }
-	  else {
-		  el.classList.add('active');
-		  config.itemList.splice(config.itemList.indexOf(label), 1);
+
+		  _chartAnimation(ritem, 'set', () => {}, config.chartIntance, this.tempValue);
 	  }
 
-	  config.chartIntance.render(config.itemList);
+	  //隐藏
+	  else {
+		if(ritem.value instanceof Array) {
+			if(ritem.value[0] instanceof Array) {
+				this.tempValue = ritem.value.map(v => v.slice(0));
+			}
+			else {
+				this.tempValue = ritem.value.slice(0);
+			}
+		}
+		else {
+			this.tempValue = ritem.value;
+		}
+
+
+		  el.classList.add('active');
+
+		  _chartAnimation(ritem, 'remove', () => {
+			 config.itemList.splice(config.itemList.indexOf(label), 1);
+			 config.chartIntance.setRenderOption(config.chartIntance.config.itemList).render();
+		  }, config.chartIntance);
+	  }
+  
   }
 
   //创建项目控件
@@ -270,7 +306,7 @@ class ChartPrototype {
 		  config.itemList = config.items.map(item => item.label);
 
 		  //保存图表实例
-		  config.chartIntance = new chartConfig.chartClass(Graphics, config).render(config.itemList);
+		  config.chartIntance = new chartConfig.chartClass(Graphics, config).init(config.itemList);
 
 		  return config.chartIntance;
 	  }
@@ -1008,8 +1044,113 @@ class DrawPolarSystem {
 * @Animate: canvas动绘制的一个封装
 */
 
-const _Animate = function() {
+//全局变量， 判断是否在动画中
+let isAnimating = false;
 
+const _Animate = function(option, durfn, callBack) {
+	let aniID = null;
+
+	const loop = function() {
+		let stop = true;
+
+		isAnimating = true;
+
+		option.map((op, i) => {
+			let speed = op[1] > op[0]? Math.ceil((op[1] - op[0])/5): Math.floor((op[1] - op[0])/5);
+			
+			op[0] += speed;
+			durfn(speed, i);
+			
+			if(op[0] !== op[1]) {
+				stop = false;
+			}
+		});
+
+		if(stop) {
+			window.cancelAnimationFrame(aniID);
+			isAnimating = false;
+			callBack();
+		}
+		else {
+			aniID = window.requestAnimationFrame(loop);
+		}
+	}
+
+	loop();
+}
+
+//图表动画
+const _chartAnimation = function(item, type: string, callBack, chart, value?) {
+	let target: number = 0,
+		optionList = [];
+
+	if(chart.config.chartType === 'BaseChart' || chart.config.chartType === 'PointChart') {
+		callBack();
+		chart.setRenderOption(chart.config.itemList).render();
+		return false;
+	}
+
+	if(item.value instanceof Array) {
+		if(item.value[0] instanceof Array) {
+
+			if(type === 'remove') {
+				optionList = Array.from(new Array(item.value.length), (op, i) => [Math.floor(item.value[i][1]), chart.origin]); 
+			}
+			if(type === 'add') {
+				optionList = Array.from(new Array(item.value.length), (op, i) => {
+					target = Math.floor(item.value[i][1]);
+					item.value[i][1] = chart.origin;
+					return [chart.origin, target];
+				});
+			}
+			if(type === 'set') {
+				optionList = Array.from(new Array(item.value.length), (op, i) => [Math.floor(item.value[i][1]), Math.floor(value[i][1])]);
+			}
+			
+			_Animate(optionList, (s, i) => {
+				item.value[i][1] += s;
+				chart.setRenderOption(chart.config.itemList).render();
+			}, callBack);
+		}
+		else {
+			if(type === 'remove') {
+				optionList = Array.from(new Array(item.value.length), (op, i) => [Math.floor(item.value[i]), chart.origin]); 
+			}
+			if(type === 'add') {
+				optionList = Array.from(new Array(item.value.length), (op, i) => {
+					target = Math.floor(item.value[i]);
+					item.value[i] = chart.origin;
+					return [chart.origin, target];
+				});
+			}
+			if(type === 'set') {
+				optionList = Array.from(new Array(item.value.length), (op, i) => [Math.floor(item.value[i]), Math.floor(value[i])]);
+			}
+
+			_Animate(optionList, (s, i) => {
+				item.value[i] += s;
+				chart.setRenderOption(chart.config.itemList).render();
+			}, callBack);
+		}
+	}
+	else {
+		if(type === 'remove') {
+			optionList = [[Math.floor(item.value), chart.origin]]; 
+		}
+		if(type === 'add') {
+			target = Math.floor(item.value);
+			item.value = chart.origin;
+			optionList = [[Math.floor(item.value), target]];
+		}
+		if(type === 'set') {
+			optionList = Array.from(new Array(item.value.length), (op, i) => [Math.floor(item.value), Math.floor(value)]);
+		}
+
+		_Animate(optionList, (s, i) => {
+			item.value += s;
+			chart.setRenderOption(chart.config.itemList).render();
+		}, callBack);
+	}
 }
 
 
@@ -1025,6 +1166,7 @@ const _Animate = function() {
 
 class InitialChart implements chartModule {
 
+
 	protected g = null;
 	protected config = null;
 
@@ -1034,6 +1176,8 @@ class InitialChart implements chartModule {
 	protected coordinateSystem = null;
 	protected radarSystem = null;
 	protected polarSystem = null;
+
+	private origin: number = 0;
 
 	constructor(Graphics, config) {
 		this.g = Graphics;
@@ -1105,15 +1249,13 @@ class InitialChart implements chartModule {
 	*/
 	protected mouseSelect(data, x: number, y: number) {};
 
-	//真正的渲染函数，里面包含了图表所有内容的渲染，包括坐标轴，数据结果，交互提示，图表标题，项目标签等等，同时也是图表每次刷新要执行的函数
-	/*
-	* @parameter:
-	* x: 鼠标横坐标
-	* y: 鼠标纵坐标
-	*/
-	protected reRender(x: number, y: number) {};
 
-	
+	//对项目进行排序
+	// protected sortItem(items) {
+	// 	items.sort((item1, item2) => item1.value - item2.value);
+	// 	return this;
+	// }
+
 	//为每一个项目标上索引
 	protected indexItem(items) {
 		items.map((item, index) => {
@@ -1123,8 +1265,35 @@ class InitialChart implements chartModule {
 		return this;
 	}
 
+	//真正的渲染函数，里面包含了图表所有内容的渲染，包括坐标轴，数据结果，交互提示，图表标题，项目标签等等，同时也是图表每次刷新要执行的函数
+	/*
+	* @parameter:
+	* x: 鼠标横坐标
+	* y: 鼠标纵坐标
+	*/
+	protected reRender(x: number, y: number) {};	
+
+
+	//渲染
+	protected render() {
+		this.g.clearRect(0, 0, this.config.canvasWidth, this.config.canvasHeight);
+
+		//遍历items分析数据
+		this.items.map((item, index) => {
+			this.data.push({
+				ele: this.analyseItems(item, index),
+				color: item.color,
+				label: item.label
+			});
+		});
+
+		this.reRender(0, 0);
+
+		return this;
+	}
+
 	//入口
-	render(itemList: string[]) {
+	setRenderOption(itemList: string[]) {
 		
 		this.items = [];
 		this.data = [];	
@@ -1146,10 +1315,9 @@ class InitialChart implements chartModule {
 		* 坐标间隔
 		* 坐标真实间隔
 		*/
-		this.g.clearRect(0, 0, this.config.canvasWidth, this.config.canvasHeight);
-
 		if(this.coordinateSystem) {
 			this.coordinateSystem = new DrawCoordinateSystem(this.g, this.config, this.items);
+			this.origin = this.coordinateSystem.yOrigin;
 		} 
 
 		if(this.radarSystem) {
@@ -1161,27 +1329,17 @@ class InitialChart implements chartModule {
 		}
 
 		if(this.config.chartType === 'PieChart' || this.config.chartType === 'AnnularChart') {
-			this.sortItem(this.items);
+			//this.sortItem(this.items);
 		}
-
-		//遍历items分析数据
-		this.items.map((item, index) => {
-			this.data.push({
-				ele: this.analyseItems(item, index),
-				color: item.color,
-				label: item.label
-			});
-		});
-
-		//第一次渲染
-		this.reRender(0, 0);
 
 		return this;
 	}
 
-	//对项目进行排序
-	protected sortItem(items) {
-		items.sort((item1, item2) => item1.value - item2.value);
+
+	init(itemList) {
+		//第一次渲染
+		this.setRenderOption(itemList).render();
+
 		return this;
 	}
 
@@ -1190,48 +1348,56 @@ class InitialChart implements chartModule {
 		this.config.itemList.push(item.label);
 
 		ChartUp.createTagItem(this.config.tagCon, item, this.config);
-
-		this.render(this.config.itemList);
+	
+		_chartAnimation(item, 'add', () => {}, this);
 	};
 
 	removeItem(label:string | number) {
-		let index: number = 0;
+		let index: number = 0,
+			ritem = null;
+
+		if(isAnimating) {
+			return false;
+		}
 
 		if(!this.config.items.length) {
 			return false;
 		}
 
-		if(label) {
-			this.config.items.map((item, i) => {
-				if(item.label === label) index = i;
-			});
-	
-			this.config.items.splice(index, 1);
-			
-			if(this.config.itemList.indexOf(label) > -1) {
-				this.config.itemList.splice(this.config.itemList.indexOf(label), 1);
-			}
-			
+		if(!label) {
+			ritem = this.config.items[this.config.items.length - 1];
+			index = this.config.items.length - 1;
 		}
 		else {
-			const item = this.config.items.pop(),
-				  index = this.config.itemList.indexOf(item.label);
+			this.config.items.map((item, i) => {
+				if(item.label === label) {
+					index = i;
+					ritem = item;
+				}
+			});
+		}
 
-			if(index > -1) {
-				this.config.itemList.splice(index, 1);
-			}	  
-		}  
+		const delCallback = function() {
+			this.config.items.splice(index, 1);
+			
+			if(this.config.itemList.indexOf(ritem.label) > -1) {
+				this.config.itemList.splice(this.config.itemList.indexOf(ritem.label), 1);
+			}
+			
+			this.setRenderOption(this.config.itemList).render();
+			ChartUp.destoryTagItem(this.config.tagCon, label);
+		}
 
-		this.render(this.config.itemList);
-
-		ChartUp.destoryTagItem(this.config.tagCon, label);
+		_chartAnimation(ritem, 'remove', delCallback.bind(this), this);
 	}
 
-	setItem(label: string | number, value) {
-		this.config.items[this.config.items.map(item => item.label).indexOf(label)].value = value;
 
-		this.render(this.config.itemList);
-	}  
+
+	setItem(label: string | number, value) {
+		const item = this.config.items[this.config.items.map(item => item.label).indexOf(label)];
+
+		_chartAnimation(item, 'set', () => {}, this, value);
+	} 
 }
 
 

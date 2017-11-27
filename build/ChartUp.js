@@ -59,6 +59,7 @@ var ChartUp = function (window) {
         function ChartPrototype() {
             //暴露的工具方法集
             this.fn = {};
+            this.tempValue = [];
             //version
             this.version = '0.0.2';
             //全局设置API
@@ -87,15 +88,38 @@ var ChartUp = function (window) {
             };
         }
         ChartPrototype.prototype.changeItem = function (el, config) {
-            var label = el.getAttribute('data-item');
+            var label = el.getAttribute('data-item'),
+                ritem = null,
+                index = 0;
+            config.items.map(function (item, i) {
+                if (item.label === label) {
+                    index = i;
+                    ritem = item;
+                }
+            });
+            //显示	  
             if (el.className.indexOf('active') > -1) {
                 el.classList.remove('active');
                 config.itemList.push(label);
+                _chartAnimation(ritem, 'set', function () {}, config.chartIntance, this.tempValue);
             } else {
+                if (ritem.value instanceof Array) {
+                    if (ritem.value[0] instanceof Array) {
+                        this.tempValue = ritem.value.map(function (v) {
+                            return v.slice(0);
+                        });
+                    } else {
+                        this.tempValue = ritem.value.slice(0);
+                    }
+                } else {
+                    this.tempValue = ritem.value;
+                }
                 el.classList.add('active');
-                config.itemList.splice(config.itemList.indexOf(label), 1);
+                _chartAnimation(ritem, 'remove', function () {
+                    config.itemList.splice(config.itemList.indexOf(label), 1);
+                    config.chartIntance.setRenderOption(config.chartIntance.config.itemList).render();
+                }, config.chartIntance);
             }
-            config.chartIntance.render(config.itemList);
         };
         //创建项目控件
         ChartPrototype.prototype.createTagItem = function (container, item, config) {
@@ -193,7 +217,7 @@ var ChartUp = function (window) {
                     return item.label;
                 });
                 //保存图表实例
-                config.chartIntance = new chartConfig.chartClass(Graphics, config).render(config.itemList);
+                config.chartIntance = new chartConfig.chartClass(Graphics, config).init(config.itemList);
                 return config.chartIntance;
             };
         };
@@ -748,7 +772,106 @@ var ChartUp = function (window) {
     /*
     * @Animate: canvas动绘制的一个封装
     */
-    var _Animate = function _Animate() {};
+    //全局变量， 判断是否在动画中
+    var isAnimating = false;
+    var _Animate = function _Animate(option, durfn, callBack) {
+        var aniID = null;
+        var loop = function loop() {
+            var stop = true;
+            isAnimating = true;
+            option.map(function (op, i) {
+                var speed = op[1] > op[0] ? Math.ceil((op[1] - op[0]) / 5) : Math.floor((op[1] - op[0]) / 5);
+                op[0] += speed;
+                durfn(speed, i);
+                if (op[0] !== op[1]) {
+                    stop = false;
+                }
+            });
+            if (stop) {
+                window.cancelAnimationFrame(aniID);
+                isAnimating = false;
+                callBack();
+            } else {
+                aniID = window.requestAnimationFrame(loop);
+            }
+        };
+        loop();
+    };
+    //图表动画
+    var _chartAnimation = function _chartAnimation(item, type, callBack, chart, value) {
+        var target = 0,
+            optionList = [];
+        if (chart.config.chartType === 'BaseChart' || chart.config.chartType === 'PointChart') {
+            callBack();
+            chart.setRenderOption(chart.config.itemList).render();
+            return false;
+        }
+        if (item.value instanceof Array) {
+            if (item.value[0] instanceof Array) {
+                if (type === 'remove') {
+                    optionList = Array.from(new Array(item.value.length), function (op, i) {
+                        return [Math.floor(item.value[i][1]), chart.origin];
+                    });
+                }
+                if (type === 'add') {
+                    optionList = Array.from(new Array(item.value.length), function (op, i) {
+                        target = Math.floor(item.value[i][1]);
+                        item.value[i][1] = chart.origin;
+                        return [chart.origin, target];
+                    });
+                }
+                if (type === 'set') {
+                    optionList = Array.from(new Array(item.value.length), function (op, i) {
+                        return [Math.floor(item.value[i][1]), Math.floor(value[i][1])];
+                    });
+                }
+                _Animate(optionList, function (s, i) {
+                    item.value[i][1] += s;
+                    chart.setRenderOption(chart.config.itemList).render();
+                }, callBack);
+            } else {
+                if (type === 'remove') {
+                    optionList = Array.from(new Array(item.value.length), function (op, i) {
+                        return [Math.floor(item.value[i]), chart.origin];
+                    });
+                }
+                if (type === 'add') {
+                    optionList = Array.from(new Array(item.value.length), function (op, i) {
+                        target = Math.floor(item.value[i]);
+                        item.value[i] = chart.origin;
+                        return [chart.origin, target];
+                    });
+                }
+                if (type === 'set') {
+                    optionList = Array.from(new Array(item.value.length), function (op, i) {
+                        return [Math.floor(item.value[i]), Math.floor(value[i])];
+                    });
+                }
+                _Animate(optionList, function (s, i) {
+                    item.value[i] += s;
+                    chart.setRenderOption(chart.config.itemList).render();
+                }, callBack);
+            }
+        } else {
+            if (type === 'remove') {
+                optionList = [[Math.floor(item.value), chart.origin]];
+            }
+            if (type === 'add') {
+                target = Math.floor(item.value);
+                item.value = chart.origin;
+                optionList = [[Math.floor(item.value), target]];
+            }
+            if (type === 'set') {
+                optionList = Array.from(new Array(item.value.length), function (op, i) {
+                    return [Math.floor(item.value), Math.floor(value)];
+                });
+            }
+            _Animate(optionList, function (s, i) {
+                item.value += s;
+                chart.setRenderOption(chart.config.itemList).render();
+            }, callBack);
+        }
+    };
     /*--------------------工具方法 END-------------------------*/
     /*------------------------------图表类------------------------------------ */
     /*
@@ -763,6 +886,7 @@ var ChartUp = function (window) {
             this.coordinateSystem = null;
             this.radarSystem = null;
             this.polarSystem = null;
+            this.origin = 0;
             this.g = Graphics;
             this.config = config;
             if (!this.config.items) {
@@ -821,6 +945,18 @@ var ChartUp = function (window) {
         */
         InitialChart.prototype.mouseSelect = function (data, x, y) {};
         ;
+        //对项目进行排序
+        // protected sortItem(items) {
+        // 	items.sort((item1, item2) => item1.value - item2.value);
+        // 	return this;
+        // }
+        //为每一个项目标上索引
+        InitialChart.prototype.indexItem = function (items) {
+            items.map(function (item, index) {
+                item.index = index;
+            });
+            return this;
+        };
         //真正的渲染函数，里面包含了图表所有内容的渲染，包括坐标轴，数据结果，交互提示，图表标题，项目标签等等，同时也是图表每次刷新要执行的函数
         /*
         * @parameter:
@@ -829,15 +965,23 @@ var ChartUp = function (window) {
         */
         InitialChart.prototype.reRender = function (x, y) {};
         ;
-        //为每一个项目标上索引
-        InitialChart.prototype.indexItem = function (items) {
-            items.map(function (item, index) {
-                item.index = index;
+        //渲染
+        InitialChart.prototype.render = function () {
+            var _this = this;
+            this.g.clearRect(0, 0, this.config.canvasWidth, this.config.canvasHeight);
+            //遍历items分析数据
+            this.items.map(function (item, index) {
+                _this.data.push({
+                    ele: _this.analyseItems(item, index),
+                    color: item.color,
+                    label: item.label
+                });
             });
+            this.reRender(0, 0);
             return this;
         };
         //入口
-        InitialChart.prototype.render = function (itemList) {
+        InitialChart.prototype.setRenderOption = function (itemList) {
             var _this = this;
             this.items = [];
             this.data = [];
@@ -858,9 +1002,9 @@ var ChartUp = function (window) {
             * 坐标间隔
             * 坐标真实间隔
             */
-            this.g.clearRect(0, 0, this.config.canvasWidth, this.config.canvasHeight);
             if (this.coordinateSystem) {
                 this.coordinateSystem = new DrawCoordinateSystem(this.g, this.config, this.items);
+                this.origin = this.coordinateSystem.yOrigin;
             }
             if (this.radarSystem) {
                 this.radarSystem = new DrawRadarSystem(this.g, this.config, this.items);
@@ -869,62 +1013,57 @@ var ChartUp = function (window) {
                 this.polarSystem = new DrawPolarSystem(this.g, this.config, this.items);
             }
             if (this.config.chartType === 'PieChart' || this.config.chartType === 'AnnularChart') {
-                this.sortItem(this.items);
+                //this.sortItem(this.items);
             }
-            //遍历items分析数据
-            this.items.map(function (item, index) {
-                _this.data.push({
-                    ele: _this.analyseItems(item, index),
-                    color: item.color,
-                    label: item.label
-                });
-            });
-            //第一次渲染
-            this.reRender(0, 0);
             return this;
         };
-        //对项目进行排序
-        InitialChart.prototype.sortItem = function (items) {
-            items.sort(function (item1, item2) {
-                return item1.value - item2.value;
-            });
+        InitialChart.prototype.init = function (itemList) {
+            //第一次渲染
+            this.setRenderOption(itemList).render();
             return this;
         };
         InitialChart.prototype.addItem = function (item) {
             this.config.items.push(item);
             this.config.itemList.push(item.label);
             ChartUp.createTagItem(this.config.tagCon, item, this.config);
-            this.render(this.config.itemList);
+            _chartAnimation(item, 'add', function () {}, this);
         };
         ;
         InitialChart.prototype.removeItem = function (label) {
-            var index = 0;
+            var index = 0,
+                ritem = null;
+            if (isAnimating) {
+                return false;
+            }
             if (!this.config.items.length) {
                 return false;
             }
-            if (label) {
-                this.config.items.map(function (item, i) {
-                    if (item.label === label) index = i;
-                });
-                this.config.items.splice(index, 1);
-                if (this.config.itemList.indexOf(label) > -1) {
-                    this.config.itemList.splice(this.config.itemList.indexOf(label), 1);
-                }
+            if (!label) {
+                ritem = this.config.items[this.config.items.length - 1];
+                index = this.config.items.length - 1;
             } else {
-                var item = this.config.items.pop(),
-                    index_1 = this.config.itemList.indexOf(item.label);
-                if (index_1 > -1) {
-                    this.config.itemList.splice(index_1, 1);
-                }
+                this.config.items.map(function (item, i) {
+                    if (item.label === label) {
+                        index = i;
+                        ritem = item;
+                    }
+                });
             }
-            this.render(this.config.itemList);
-            ChartUp.destoryTagItem(this.config.tagCon, label);
+            var delCallback = function delCallback() {
+                this.config.items.splice(index, 1);
+                if (this.config.itemList.indexOf(ritem.label) > -1) {
+                    this.config.itemList.splice(this.config.itemList.indexOf(ritem.label), 1);
+                }
+                this.setRenderOption(this.config.itemList).render();
+                ChartUp.destoryTagItem(this.config.tagCon, label);
+            };
+            _chartAnimation(ritem, 'remove', delCallback.bind(this), this);
         };
         InitialChart.prototype.setItem = function (label, value) {
-            this.config.items[this.config.items.map(function (item) {
+            var item = this.config.items[this.config.items.map(function (item) {
                 return item.label;
-            }).indexOf(label)].value = value;
-            this.render(this.config.itemList);
+            }).indexOf(label)];
+            _chartAnimation(item, 'set', function () {}, this, value);
         };
         return InitialChart;
     }();
