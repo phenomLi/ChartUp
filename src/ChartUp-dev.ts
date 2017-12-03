@@ -102,7 +102,7 @@ class ChartPrototype {
   //暴露的工具方法集
   public fn: object = {};
 
-  private tempValue = [];
+  private tempValue = {};
 
   //version
   public version = '0.0.2';
@@ -151,21 +151,21 @@ class ChartPrototype {
 		  el.classList.remove('active');
 		  config.itemList.push(label);
 
-		  _chartAnimation(ritem, 'set', () => {}, config.chartIntance, this.tempValue);
+		  _chartAnimation(ritem, 'set', () => {}, config.chartIntance, this.tempValue[label]);
 	  }
 
 	  //隐藏
 	  else {
 		if(ritem.value instanceof Array) {
 			if(ritem.value[0] instanceof Array) {
-				this.tempValue = ritem.value.map(v => v.slice(0));
+				this.tempValue[ritem.label] = ritem.value.map(v => v.slice(0));
 			}
-			else {
-				this.tempValue = ritem.value.slice(0);
+			else {  
+				this.tempValue[ritem.label] = ritem.value.slice(0);
 			}
 		}
 		else {
-			this.tempValue = ritem.value;
+			this.tempValue[ritem.label] = ritem.value;
 		}
 
 

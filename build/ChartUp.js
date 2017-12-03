@@ -59,7 +59,7 @@ var ChartUp = function (window) {
         function ChartPrototype() {
             //暴露的工具方法集
             this.fn = {};
-            this.tempValue = [];
+            this.tempValue = {};
             //version
             this.version = '0.0.2';
             //全局设置API
@@ -101,18 +101,18 @@ var ChartUp = function (window) {
             if (el.className.indexOf('active') > -1) {
                 el.classList.remove('active');
                 config.itemList.push(label);
-                _chartAnimation(ritem, 'set', function () {}, config.chartIntance, this.tempValue);
+                _chartAnimation(ritem, 'set', function () {}, config.chartIntance, this.tempValue[label]);
             } else {
                 if (ritem.value instanceof Array) {
                     if (ritem.value[0] instanceof Array) {
-                        this.tempValue = ritem.value.map(function (v) {
+                        this.tempValue[ritem.label] = ritem.value.map(function (v) {
                             return v.slice(0);
                         });
                     } else {
-                        this.tempValue = ritem.value.slice(0);
+                        this.tempValue[ritem.label] = ritem.value.slice(0);
                     }
                 } else {
-                    this.tempValue = ritem.value;
+                    this.tempValue[ritem.label] = ritem.value;
                 }
                 el.classList.add('active');
                 _chartAnimation(ritem, 'remove', function () {
