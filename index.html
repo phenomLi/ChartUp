@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ChartUp | 轻量 HTML5 数据可视化工具库</title>
+<link rel="stylesheet" href="./index/styles.css">
+<link rel="stylesheet" href="./build/ChartUp.css">
+<link rel="stylesheet" href="./index/icon/css/font-awesome.min.css">
+<style>
+
+body,p,h1,h2,h3,.btn
+{
+font-family: "Microsoft Yahei", sans-serif,arial;
+}
+
+
+
+#features i {
+	font-size: 100px;
+}
+
+.chartUp-container {
+	width: 50%;
+	min-height: 400px;
+	float: left;
+}
+
+.btn-con {
+	margin-top: 26px;
+}
+
+.btn-con > button {
+	margin-right: 16px;
+	border-radius: 5px;
+	color: #fff;
+	padding: 12px 25px 12px 25px;
+	border: none;
+	outline: none;
+	cursor: pointer;
+}
+
+.btn-con > .addItem {
+	background-color: #f33e6f;
+}
+
+.btn-con > .removeItem {
+	background-color: #2d91ea;
+}
+
+
+</style>
+</head>
+
+
+<body style="border: none;">
+	<header style="margin-bottom: 80px;">
+		<div>
+			<hgroup style="margin: 0; width: 100%;">
+				<h1>ChartUp</h1>
+				<h2>是一个足够简单、面向对象、为设计者和开发者准备的可交互的数据可视化工具库。</h2>
+			</hgroup>
+			<a class="btn blue" href="https://github.com/phenomLi/ChartUp">Github</a>
+		</div>
+	</header>
+
+	
+	<section id="features">
+		<article>
+			<div style="margin: 0 auto 0; padding: 10px; text-align: center;">
+				<i class="fa fw fa-bar-chart"></i>
+			</div>
+			<h3>9种图表类型</h3>
+			<p>ChartUp帮你用不同的方式让你的数据变得可视化。每种类型的图表都可交互。</p>
+		</article>
+		<article>
+			<div style="margin: 0 auto 0; padding: 10px; text-align: center;">
+				<i class="fa fw fa-html5"></i>
+			</div>
+			<h3>基于HTML5</h3>
+			<p>ChartUp基于HTML5 canvas技术，支持所有现代浏览器。</p>
+		</article>
+		<article>
+			<div style="margin: 0 auto 0; padding: 10px; text-align: center;">
+				<i class="fa fw fa-bolt"></i>
+			</div>
+			<h3>简单、灵活</h3>
+			<p>ChartUp不依赖任何外部工具库，
+				并且相比于其他数据可视化库足够简单，配置的项目极少，上手迅速，开箱即用。
+				同时ChartUp支持动态改变数据，且实时反映到图表上。
+			</p>
+		</article>
+	</section>
+
+	<section id="examples">
+
+		<article>
+			<div class="half">
+				<h2>基本直角坐标图（Base chart）</h2>
+				<p>基本直角坐标图是最基本的图表。</p>
+				<p>在ChartUp中基本直角坐标图可以用于描绘方程和简单的点线图。</p>
+				
+				<div class="btn-con">
+					<button class="addItem">添加数据</button>
+					<button class="removeItem">删除数据</button>
+				</div>
+			</div>
+			<div id="BaseChart"></div>
+		</article>
+		
+		<article>
+			<div id="LineChart"></div>
+			<div class="half">
+				<h2>折线图（Line chart）</h2>
+				<p>折线图可能是日常中展示趋势使用的最多的图表。</p>
+				<p>折线图是排列在工作表的列或行中的数据可以绘制到折线图中。折线图可以显示随时间而变化的连续数据，因此非常适用于显示在相等时间间隔下数据的趋势。</p>
+			
+				<div class="btn-con">
+					<button class="addItem">添加数据</button>
+					<button class="removeItem">删除数据</button>
+				</div>
+			</div>
+		</article>
+
+		<article>
+			<div class="half">
+				<h2>柱状图（Pillar chart）</h2>
+				<p>柱状图是一种以长方形的长度为变量的表达图形的统计报告图，
+					由一系列高度不等的纵向条纹表示数据分布的情况，用来比较两个或以上的价值，
+					只有一个变量，通常利用于较小的数据集分析。
+				</p>
+
+				<div class="btn-con">
+					<button class="addItem">添加数据</button>
+					<button class="removeItem">删除数据</button>
+				</div>
+			</div>
+			<div id="PillarChart"></div>
+		</article>
+		
+		<article>
+			<div id="PointChart"></div>
+			<div class="half">
+				<h2>散点图（Point chart）</h2>
+				<p>散点图是指在回归分析中，数据点在直角坐标系平面上的分布图，
+					散点图表示因变量随自变量而变化的大致趋势，
+					据此可以选择合适的函数对数据点进行拟合。
+				</p>
+				<p>ChartUp中的散点图表支持权重分析，权重越大，点的半径越大。</p>
+
+				<div class="btn-con">
+					<button class="addItem">添加数据</button>
+					<button class="removeItem">删除数据</button>
+				</div>
+			</div>
+		</article>
+
+		<article>
+			<div class="half">
+				<h2>面积图（Area chart）</h2>
+				<p>面积图强调多个变量数量随时间而变化的程度，也可用于引起人们对总值趋势的注意。</p>
+
+				<div class="btn-con">
+					<button class="addItem">添加数据</button>
+					<button class="removeItem">删除数据</button>
+				</div>
+			</div>
+			<div id="AreaChart"></div>
+		</article>
+
+		<article>
+			<div id="PieChart"></div>
+			<div class="half">
+				<h2>饼状图（Pie chart）</h2>
+				<p>饼状图在统计中也是十分常用，饼状图能十分直观地反映数据与总量的比例关系。</p>
+
+				<div class="btn-con">
+					<button class="addItem">添加数据</button>
+					<button class="removeItem">删除数据</button>
+				</div>
+			</div>
+		</article>
+
+		<article>
+			<div class="half">
+				<h2>环形图（Annular chart）</h2>
+				<p>环形图是由两个及两个以上大小不一的饼图叠在一起，挖去中间的部分所构成的图形。</p>
+
+				<div class="btn-con">
+					<button class="addItem">添加数据</button>
+					<button class="removeItem">删除数据</button>
+				</div>
+			</div>
+			<div id="AnnularChart"></div>
+		</article>
+
+		<article>
+			<div id="PolarChart"></div>
+			<div class="half">
+				<h2>极地区域图（Polar chart）</h2>
+				<p>极地区域图与饼状图十分相似，但是反映变量关系的不是扇形的角度，而是它的半径。</p>
+
+				<div class="btn-con">
+					<button class="addItem">添加数据</button>
+					<button class="removeItem">删除数据</button>
+				</div>
+			</div>
+		</article>
+
+		<article>
+			<div class="half">
+				<h2>雷达图（Radar chart）</h2>
+				<p>雷达图，又可称为戴布拉图、蜘蛛网图。雷达图常用于多项指标的全面分析，具有完整、清晰和直观的优点。</p>
+
+				<div class="btn-con">
+					<button class="addItem">添加数据</button>
+					<button class="removeItem">删除数据</button>
+				</div>
+			</div>
+			<div id="RadarChart"></div>
+		</article>
+
+	</section>
+
+	<footer>
+		<p>A project by <a href="https://github.com/phenomLi">Phenom</a></p>
+	</footer>
+	
+<script src="./build/ChartUp.min.js"></script>	
+
+<script>
+
+const color = {
+	red: '#f33e6f',
+	blue: '#2d91ea'
+}
+
+const getColor = function() {
+	return '#'+ (Math.random()*0xffffff<<0).toString(16);
+}
+
+const addItemBtn = document.querySelectorAll('.addItem'),
+	  removeItemBtn = document.querySelectorAll('.removeItem');
+
+
+
+
+
+
+
+
+(function() {
+	const BaseChart = ChartUp.BaseChart('#BaseChart', {
+		interval: [5, 5],
+		items: [	
+			{
+				label: 'y = (1/16)*x^2',
+				value: function(x) {
+					return (1/16)*x*x;
+				},
+				color: '#f33e6f'
+			},
+			{
+				label: 'y = (1/20)*e^x',
+				value: function(x) {
+					return (1/20)*Math.pow(Math.E, x);
+				},
+				color: '#2d91ea'
+			}
+		]
+	});
+
+	addItemBtn[0].addEventListener('click', function(e) {
+		const a = 1/(Math.random()*20),
+			  b = 1/(Math.random()*20);
+
+		BaseChart.addItem({
+			label: `y = ${a.toFixed(2)}*x^2 + ${b.toFixed(2)}*x`,
+			value: function(x) {
+				return a*Math.pow(x, 2) + b*x;
+			},
+			color: getColor()
+		});
+	});
+
+	removeItemBtn[0].addEventListener('click', function(e) {
+		BaseChart.removeItem();
+	});
+})();
+
+
+
+
+
+(function() {
+	let i = 0;
+
+	const LineChart = ChartUp.LineChart('#LineChart', {
+		interval: 20,
+		xAxis: Array.from(new Array(6), (x, i) => `第${i + 1}星期`),
+		items: [{
+			label: 'A',
+			value: Array.from(new Array(6), x => Math.ceil(Math.random()*60)),
+			color: '#f33e6f'
+		}, 
+		{
+			label: 'C',
+			value: Array.from(new Array(6), x => Math.ceil(Math.random()*60)),
+			color: '#2d91ea'
+		}]
+	});
+
+	addItemBtn[1].addEventListener('click', function(e) {
+		LineChart.addItem({
+			label: 'data' + (i++),
+			value: Array.from(new Array(6), x => Math.ceil(Math.random()*Math.random()*200)),
+			color: getColor()
+		});
+	});
+
+	removeItemBtn[1].addEventListener('click', function(e) {
+		LineChart.removeItem();
+	});
+})();
+
+
+
+
+
+(function() {
+	let i = 0;
+
+	const PillarChart =	ChartUp.PillarChart('#PillarChart', {
+		interval: 20,
+		xAxis: ['一月', '二月', '三月', '四月', '五月', '六月'],
+		items: [{
+			label: 'A',
+			value: Array.from(new Array(6), x => Math.ceil(Math.random()*60)),
+			color: color.red
+		}, 
+		{
+			label: 'B',
+			value: Array.from(new Array(6), x => Math.ceil(Math.random()*60)),
+			color: color.blue
+		}]
+	});
+
+	addItemBtn[2].addEventListener('click', function(e) {
+		PillarChart.addItem({
+			label: 'data' + (i++),
+			value: Array.from(new Array(6), x => Math.ceil(Math.random()*Math.random()*100)),
+			color: getColor()
+		});
+	});
+
+	removeItemBtn[2].addEventListener('click', function(e) {
+		PillarChart.removeItem();
+	});
+
+})();
+
+
+
+
+
+
+
+
+
+
+
+
+
+(function() {
+	let i = 0;
+
+	const PointChart =	ChartUp.PointChart('#PointChart', {
+		interval: [5, 5],
+		defaultRadius: 4,
+		items: [{
+			label: 'A',
+			value: Array.from(new Array(30), n => [Math.random()*65, Math.random()*30, Math.floor(Math.random()*10)]),
+			color: color.red
+		},
+		{
+			label: 'B',
+			value: Array.from(new Array(20), n => [Math.random()*40, Math.random()*30, Math.floor(Math.random()*5)]),
+			color: color.blue
+		}]
+	});
+
+	addItemBtn[3].addEventListener('click', function(e) {
+		PointChart.addItem({
+			label: 'data' + (i++),
+			value: Array.from(new Array(Math.ceil(Math.random()*10)), n => [Math.random()*65, Math.random()*30, Math.floor(Math.random()*10)]),
+			color: getColor()
+		});
+	});
+
+	removeItemBtn[3].addEventListener('click', function(e) {
+		PointChart.removeItem();
+	});
+
+})();
+
+
+
+
+
+
+
+
+
+
+
+(function() {
+	let i = 0;
+
+	const AreaChart = ChartUp.AreaChart('#AreaChart', {
+		interval: 20,
+		xAxis: Array.from(new Array(new Date().getFullYear() - 2010), (y, i) => new Date().getFullYear() - i).reverse(),
+		items: [
+			{
+				label: 'A',
+				color: color.red,
+				value: Array.from(new Array(new Date().getFullYear() - 2010), x => Math.ceil(Math.random()*30)),
+			},
+			{
+				label: 'B',
+				color: color.blue,
+				value: Array.from(new Array(new Date().getFullYear() - 2010), x => Math.ceil(Math.random()*30))
+			}
+		]
+	});
+
+	addItemBtn[4].addEventListener('click', function(e) {
+		AreaChart.addItem({
+			label: 'data' + (i++),
+			value: Array.from(new Array(new Date().getFullYear() - 2010), x => Math.ceil(Math.random()*25)),
+			color: getColor()
+		});
+	});
+
+	removeItemBtn[4].addEventListener('click', function(e) {
+		AreaChart.removeItem();
+	});
+
+})();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+(function() {
+	let i = 0;
+
+	const PieChart = ChartUp.PieChart('#PieChart', {
+		radius: 130,
+		items: [{
+			label: 'A',
+			value: Math.ceil(Math.random()*100),
+			color: color.red
+		},
+		{
+			label: 'B',
+			value: Math.ceil(Math.random()*100),
+			color: color.blue
+		}]
+	});
+
+	addItemBtn[5].addEventListener('click', function(e) {
+		PieChart.addItem({
+			label: 'data' + (i++),
+			value: Math.ceil(Math.random()*100),
+			color: getColor()
+		});
+	});
+
+	removeItemBtn[5].addEventListener('click', function(e) {
+		PieChart.removeItem();
+	});
+})();
+
+
+
+
+
+
+
+
+
+
+
+
+
+(function() {
+	let i = 0;
+
+	const AnnularChart = ChartUp.AnnularChart('#AnnularChart', {
+		radius: 130,
+		width: 50,
+		items: [{
+			label: 'A',
+			value: Math.ceil(Math.random()*100),
+			color: color.red
+		},
+		{
+			label: 'B',
+			value: Math.ceil(Math.random()*100),
+			color: color.blue
+		}]
+	});
+
+	addItemBtn[6].addEventListener('click', function(e) {
+		AnnularChart.addItem({
+			label: 'data' + (i++),
+			value: Math.ceil(Math.random()*100),
+			color: getColor()
+		});
+	});
+
+	removeItemBtn[6].addEventListener('click', function(e) {
+		AnnularChart.removeItem();
+	});
+})();
+
+
+
+
+
+
+
+
+
+
+
+
+(function() {
+	let i = 0;
+
+	const PolarChart = ChartUp.PolarChart('#PolarChart', {
+		radius: 140,
+		interval: 20,
+		items: [{
+			label: 'A',
+			value: 15 + Math.ceil(Math.random()*100),
+			color:color.red
+		},
+		{
+			label: 'B',
+			value: 10 + Math.ceil(Math.random()*100),
+			color: color.blue
+		},
+		{
+			label: 'C',
+			value: 10 + Math.ceil(Math.random()*100),
+			color:color.red
+		},
+		{
+			label: 'D',
+			value: 10 + Math.ceil(Math.random()*100),
+			color: color.blue
+		}]
+	});
+
+	addItemBtn[7].addEventListener('click', function(e) {
+		PolarChart.addItem({
+			label: 'data' + (i++),
+			value: 10 + Math.ceil(Math.random()*100),
+			color: getColor()
+		});
+	});
+
+	removeItemBtn[7].addEventListener('click', function(e) {
+		PolarChart.removeItem();
+	});
+})();
+
+
+
+
+
+
+
+
+
+
+
+
+(function() {
+	let i = 0;
+
+	const RadarChart = ChartUp.RadarChart('#RadarChart', {
+		radius: 130,
+		interval: 5,
+		index: ['篮板', '得分', '盖帽', '助攻', '抢断'],
+		items: [
+			{
+				label: 'A',
+				value: Array.from(new Array(5), x => Math.ceil(Math.random()*15)),
+				color: color.red
+			},
+			{
+				label: 'B',
+				value: Array.from(new Array(5), x => Math.ceil(Math.random()*15)),
+				color: color.blue
+			}
+		]
+	});
+
+	addItemBtn[8].addEventListener('click', function(e) {
+		RadarChart.addItem({
+			label: 'data' + (i++),
+			value: Array.from(new Array(5), x => Math.ceil(Math.random()*15)),
+			color: getColor()
+		});
+	});
+
+	removeItemBtn[8].addEventListener('click', function(e) {
+		RadarChart.removeItem();
+	});
+})();
+
+
+
+
+
+
+
+
+
+
+</script>
+
+
+</body>
+</html>
